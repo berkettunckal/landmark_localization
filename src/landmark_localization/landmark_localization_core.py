@@ -4,6 +4,7 @@
 '''
 landmark_localization is ROS-independed parent class for all localization methods
 '''
+import numpy as np
 
 class LandmarkLocalization(object):
     
@@ -64,7 +65,11 @@ class LandmarkLocalization(object):
     def get_pose(self):
         raise NotImplementedError('get_pose')
     
+    def plot(self):
+        raise NotImplementedError('plot')
     
+def substract_angles(target, source):
+    return np.arctan2(np.sin(target-source), np.cos(target-source))
 
 if __name__ == "__main__":
     pass

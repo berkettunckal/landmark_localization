@@ -8,6 +8,7 @@ simple test, where robot moves through landmarks field with constant linear and 
 import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.ll_hf2d import HF2D
+from landmark_localization.landmark_localization_core import substract_angles
 
 def generate_landmarks(test_params):
     landmarks = []
@@ -38,19 +39,27 @@ def do_motion(test_params):
 def do_measure(test_params, landmarks):
     landmarks_params = []
     for landmark in landmarks:
-        r = np.hypot(test_params['robot']['x'] - landmark['x'], test_params['robot']['y'] - landmark['y'])
-        if r <= test_params['sensor']['max_r']:
+        dx = test_params['robot']['x'] - landmark['x']
+        dy = test_params['robot']['y'] - landmark['y']
+        r = np.hypot(dx, dy)
+        a_glob = np.arctan2(dy, dx)
+        a = substract_angles(a_glob, test_params['robot']['Y'])
+        
+        if r <= test_params['sensor']['max_r'] and np.abs(a) <= test_params['sensor']['max_a']:
             landmark_param = {}
             landmark_param['x'] = landmark['x']
             landmark_param['y'] = landmark['y']
             landmark_param['r'] = np.random.normal(r, test_params['sensor']['sr'])
             landmark_param['sr'] = test_params['sensor']['sr']
+            landmark_param['a'] = np.random.normal(a, test_params['sensor']['sa'])
+            landmark_param['sa'] = test_params['sensor']['sa']                    
             landmarks_params.append(landmark_param)
     return landmarks_params        
 
 def plot_robot_pose(x, y, Y, color, label = None):
     plt.plot(x, y, "o", color = color)
     plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label)
+    plt.legend()    
 
 def plot_exp_base(figure, test_params, landmarks_params, landmarks):
     figure.clf()
@@ -69,8 +78,7 @@ def plot_exp_base(figure, test_params, landmarks_params, landmarks):
         
     plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')
     
-    plt.legend()
-    
+    plt.legend()    
 
 if __name__ == '__main__':        
     
@@ -99,7 +107,7 @@ if __name__ == '__main__':
     test_params['sensor']['max_r'] = 10
     test_params['sensor']['max_a'] = np.pi
     test_params['sensor']['sr'] = 0.1
-    test_params['sensor']['sa'] = 0.01
+    test_params['sensor']['sa'] = 0.1
     
     landmarks = generate_landmarks(test_params)        
     #TODO: read/write params from file    
@@ -121,26 +129,36 @@ if __name__ == '__main__':
     hf_params['dims']['Y']['min'] = -np.pi
     hf_params['dims']['Y']['max'] = np.pi
     hf_params['dims']['Y']['d_res'] = 0.15
+    hf_params['calc_type'] = "ADDITION"
     
     hf = HF2D(hf_params)
-    
-    
+        
     field_figure = plt.figure()             
     while test_params['sim']['step'] < test_params['sim']['steps']:
         test_params['sim']['step'] += 1
-        motion_params = do_motion(test_params)
         
+        # MOTION
+        motion_params = do_motion(test_params)
+        #hf.motion_update(motion_params)
+        
+        # MEASURE
         landmarks_params = do_measure(test_params, landmarks)
         hf.landmarks_update(landmarks_params)
-        hf_pose= hf.get_pose()
-        plot_exp_base(field_figure, test_params, landmarks_params, landmarks)
-        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "blue", "hf")
+        
+        
+        
+        # GET POSE
+        
+        
+        # PLOT STUFF
+        plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
+        hf.plot()
+        hf_pose = hf.get_pose()        
+        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")
+        
+        
         
         plt.pause(0.1)
-        
-        
-        
-        
     
     
     
