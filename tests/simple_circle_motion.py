@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+'''
+simple test, where robot moves through landmarks field with constant linear and angular speed
+'''
+
+import numpy as np
+import matplotlib.pyplot as plt
+from landmark_localization.ll_hf2d import HF2D
+
+def generate_landmarks(test_params):
+    landmarks = []
+    for i in range(test_params['field']['N_landmarks']):
+        landmark = {}
+        landmark['x'] = np.random.uniform(-test_params['field']['x_max'], test_params['field']['x_max'])
+        landmark['y'] = np.random.uniform(-test_params['field']['y_max'], test_params['field']['y_max'])
+        landmarks.append(landmark)
+    return landmarks  
+
+def do_motion(test_params):
+    # real
+    test_params['robot']['Y'] += test_params['sim']['dt'] * test_params['robot']['w']
+    test_params['robot']['Y'] = (test_params['robot']['Y'] + np.pi)%(2*np.pi) - np.pi
+    test_params['robot']['x'] += (test_params['sim']['dt'] * test_params['robot']['v']) * np.cos(test_params['robot']['Y'])
+    test_params['robot']['y'] += (test_params['sim']['dt'] * test_params['robot']['v']) * np.sin(test_params['robot']['Y'])
+    
+    # noisy
+    motion_params = {}
+    motion_params['dt'] = test_params['sim']['dt']
+    motion_params['wY'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
+    motion_params['swY'] = test_params['robot']['sw']
+    motion_params['vx'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
+    motion_params['svx'] = test_params['robot']['sv']
+    
+    return motion_params      
+
+def do_measure(test_params, landmarks):
+    landmarks_params = []
+    for landmark in landmarks:
+        r = np.hypot(test_params['robot']['x'] - landmark['x'], test_params['robot']['y'] - landmark['y'])
+        if r <= test_params['sensor']['max_r']:
+            landmark_param = {}
+            landmark_param['x'] = landmark['x']
+            landmark_param['y'] = landmark['y']
+            landmark_param['r'] = np.random.normal(r, test_params['sensor']['sr'])
+            landmark_param['sr'] = test_params['sensor']['sr']
+            landmarks_params.append(landmark_param)
+    return landmarks_params        
+
+def plot_robot_pose(x, y, Y, color, label = None):
+    plt.plot(x, y, "o", color = color)
+    plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label)
+
+def plot_exp_base(figure, test_params, landmarks_params, landmarks):
+    figure.clf()
+    plt.xlim(-test_params['field']['x_max'], test_params['field']['x_max'])
+    plt.ylim(-test_params['field']['y_max'], test_params['field']['y_max'])
+    ax = plt.gca()    
+    ax.set_aspect('equal', 'box')
+    plt.title("Sim step {} of {}, dt = {}".format(test_params['sim']['step'], test_params['sim']['steps'], test_params['sim']['dt']))
+    
+    
+    for landmark_param in landmarks_params:
+        plt.plot(landmark_param['x'], landmark_param['y'], 'ro')
+    
+    for landmark in landmarks:
+        plt.plot(landmark['x'], landmark['y'], 'k.')
+        
+    plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')
+    
+    plt.legend()
+    
+
+if __name__ == '__main__':        
+    
+    test_params = {}
+    
+    test_params['sim'] = {}
+    test_params['sim']['dt'] = 0.5
+    test_params['sim']['steps'] = 1000
+    test_params['sim']['step'] = 0
+    
+    test_params['field'] = {}
+    test_params['field']['N_landmarks'] = 10
+    test_params['field']['x_max'] = 10
+    test_params['field']['y_max'] = 10
+    
+    test_params['robot'] = {}
+    test_params['robot']['x'] = 0
+    test_params['robot']['y'] = -9
+    test_params['robot']['Y'] = 0
+    test_params['robot']['v'] = 0.1
+    test_params['robot']['w'] = 0.012
+    test_params['robot']['sv'] = 0.01
+    test_params['robot']['sw'] = 0.01
+    
+    test_params['sensor'] = {}
+    test_params['sensor']['max_r'] = 10
+    test_params['sensor']['max_a'] = np.pi
+    test_params['sensor']['sr'] = 0.1
+    test_params['sensor']['sa'] = 0.01
+    
+    landmarks = generate_landmarks(test_params)        
+    #TODO: read/write params from file    
+    
+    '''
+    localization methods
+    '''    
+    hf_params = {}
+    hf_params['dims'] = {}
+    hf_params['dims']['x'] = {}
+    hf_params['dims']['x']['min'] = -test_params['field']['x_max']
+    hf_params['dims']['x']['max'] = test_params['field']['x_max']
+    hf_params['dims']['x']['d_res'] = 0.2
+    hf_params['dims']['y'] = {}
+    hf_params['dims']['y']['min'] = -test_params['field']['y_max']
+    hf_params['dims']['y']['max'] = test_params['field']['y_max']
+    hf_params['dims']['y']['d_res'] = 0.2
+    hf_params['dims']['Y'] = {}
+    hf_params['dims']['Y']['min'] = -np.pi
+    hf_params['dims']['Y']['max'] = np.pi
+    hf_params['dims']['Y']['d_res'] = 0.15
+    
+    hf = HF2D(hf_params)
+    
+    
+    field_figure = plt.figure()             
+    while test_params['sim']['step'] < test_params['sim']['steps']:
+        test_params['sim']['step'] += 1
+        motion_params = do_motion(test_params)
+        
+        landmarks_params = do_measure(test_params, landmarks)
+        hf.landmarks_update(landmarks_params)
+        hf_pose= hf.get_pose()
+        plot_exp_base(field_figure, test_params, landmarks_params, landmarks)
+        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "blue", "hf")
+        
+        plt.pause(0.1)
+        
+        
+        
+        
+    
+    
+    
