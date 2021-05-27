@@ -8,6 +8,7 @@ simple test, where robot moves through landmarks field with constant linear and 
 import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.ll_hf2d import HF2D
+from landmark_localization.ll_amcl2d import AMCL2D
 from landmark_localization.landmark_localization_core import substract_angles
 
 def generate_landmarks(test_params):
@@ -76,9 +77,7 @@ def plot_exp_base(figure, test_params, landmarks_params, landmarks):
     for landmark in landmarks:
         plt.plot(landmark['x'], landmark['y'], 'k.')
         
-    plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')
-    
-    plt.legend()    
+    plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')            
 
 if __name__ == '__main__':        
     
@@ -130,8 +129,24 @@ if __name__ == '__main__':
     hf_params['dims']['Y']['max'] = np.pi
     hf_params['dims']['Y']['d_res'] = 0.15
     hf_params['calc_type'] = "ADDITION"
-    
+    hf_params['yaw_discount'] = 0.1
+    hf_params['prev_step_weight'] = 0.5    
     hf = HF2D(hf_params)
+    
+    amcl_params = {}
+    amcl_params['NP'] = 1000
+    amcl_params['dims'] = {}
+    amcl_params['dims']['x'] = {}
+    amcl_params['dims']['x']['min'] = -test_params['field']['x_max']
+    amcl_params['dims']['x']['max'] = test_params['field']['x_max']
+    amcl_params['dims']['y'] = {}
+    amcl_params['dims']['y']['min'] = -test_params['field']['y_max']
+    amcl_params['dims']['y']['max'] = test_params['field']['y_max']
+    amcl_params['dims']['Y'] = {}
+    amcl_params['dims']['Y']['min'] = -np.pi
+    amcl_params['dims']['Y']['max'] = np.pi
+    amcl_params['calc_type'] = "ADDITION"
+    amcl = AMCL2D(amcl_params)
         
     field_figure = plt.figure()             
     while test_params['sim']['step'] < test_params['sim']['steps']:
@@ -139,25 +154,25 @@ if __name__ == '__main__':
         
         # MOTION
         motion_params = do_motion(test_params)
-        #hf.motion_update(motion_params)
+        hf.motion_update(motion_params)
+        amcl.motion_update(motion_params)
         
         # MEASURE
         landmarks_params = do_measure(test_params, landmarks)
         hf.landmarks_update(landmarks_params)
-        
-        
-        
-        # GET POSE
-        
-        
+        amcl.landmarks_update(landmarks_params)
+                        
+        # GET POSES
+        hf_pose = hf.get_pose()
+        amcl_pose = amcl.get_pose()        
+                
         # PLOT STUFF
         plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
-        hf.plot()
-        hf_pose = hf.get_pose()        
-        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")
-        
-        
-        
+        hf.plot()        
+        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
+        amcl.plot()
+        plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
+        plt.legend()
         plt.pause(0.1)
     
     

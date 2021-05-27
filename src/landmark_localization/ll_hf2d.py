@@ -8,22 +8,30 @@ import landmark_localization.landmark_localization_core as llc
 import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
+from scipy.ndimage import gaussian_filter
 
 class HF2D(llc.LandmarkLocalization):
     
     '''
-    params dictinary:
+    params dictionary:
         dims:
             x: d_res, min, max
             y: d_res, min, max                        
             Y: d_res, min, max  
-        calc_type: "ADDITION" or "MULTIPLICATION"
+        calc_type: "ADDITION" (def) or "MULTIPLICATION"
+        yaw_discount: 1 (def)
+        prev_step_weight: 0.5 (def)
     '''
     def __init__(self, params = {}):
         super(HF2D, self).__init__()        
         
         if not 'calc_type' in params or (params['calc_type'] != "ADDITION" and params['calc_type'] != "MULTIPLICATION"):
             params['calc_type'] = "ADDITION"                    
+        if not 'yaw_discount' in params:
+            params['yaw_discount'] = 1
+        if not 'prev_step_weight' in params:
+            params['prev_step_weight'] = 0.5
+        
         # TODO check other params
         self.params = params
         
@@ -68,11 +76,39 @@ class HF2D(llc.LandmarkLocalization):
             dim['max_len'] += dim['d_res']/2
             dim['size'] = 1
             dim['res'] = dim['d_res']
-    
+        
     
     def motion_update(self, motion_params):
         # TODO super check params
-        pass            
+        r = motion_params['dt'] * motion_params['vx']
+        da = motion_params['dt'] * motion_params['wY']
+        a_shift = int(da / self.params['dims']['Y']['res'])                
+        
+        if( a_shift > 0 ):            
+            self.m_grid[:,:,:-a_shift] = self.m_grid[:,:,a_shift:]
+        elif a_shift < 0:
+            self.m_grid[:,:,a_shift:] = self.m_grid[:,:,:-a_shift]
+        # NOTE: idk how to blur yaw axis
+        
+        for yaw_row in range(self.params['dims']['Y']['size']):            
+            a = self.params['dims']['Y']['min'] + self.params['dims']['Y']['res'] * yaw_row
+            
+            x_shift = int(r * np.cos(a) / self.params['dims']['x']['res'])
+            y_shift = int(r * np.sin(a) / self.params['dims']['y']['res'])                                
+            
+            if( x_shift > 0 ):            
+                self.m_grid[:-x_shift,:,yaw_row] = self.m_grid[x_shift:,:,yaw_row]
+            elif x_shift < 0:
+                self.m_grid[x_shift:,:,yaw_row] = self.m_grid[:-x_shift,:,yaw_row]
+            
+            if( y_shift > 0 ):            
+                self.m_grid[:,:-y_shift,yaw_row] = self.m_grid[:,y_shift:,yaw_row]
+            elif y_shift < 0:
+                self.m_grid[:,y_shift:,yaw_row] = self.m_grid[:,:-y_shift,yaw_row]
+        
+            self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'])
+            
+        self.s_grid = self.reset_grid()
     
     # NOTE that function could be more vectorized
     def landmarks_update(self, landmarks_params ):
@@ -89,9 +125,9 @@ class HF2D(llc.LandmarkLocalization):
                 pxy = norm.pdf(dr, scale = landmark_param['sr'])
                 
                 if self.params['calc_type'] == "ADDITION":                            
-                    self.m_grid += np.expand_dims(pxy, 2)
+                    self.s_grid += np.expand_dims(pxy, 2)
                 else:
-                    self.m_grid *= np.expand_dims(pxy, 2)
+                    self.s_grid *= np.expand_dims(pxy, 2)
             
             if 'a' in landmark_param:
                 a_glob = np.arctan2(y, x).T                                                                
@@ -105,16 +141,23 @@ class HF2D(llc.LandmarkLocalization):
                 pY = norm.pdf(da, scale = landmark_param['sa'])
                 
                 if self.params['calc_type'] == "ADDITION":                            
-                    self.m_grid += pY
+                    self.s_grid += pY
                 else:
-                    self.m_grid *= pY                
+                    self.s_grid *= pY                
+                    
+    def merge_grids(self):
+        if self.params['calc_type'] == "ADDITION":                                        
+            self.m_grid = self.m_grid * self.params['prev_step_weight'] + self.s_grid * (1 - self.params['prev_step_weight'])
+        else:
+            self.m_grid = self.m_grid * self.s_grid
         
     def get_pose(self):        
+        self.merge_grids()
         ipose = np.unravel_index(np.argmax(self.m_grid), self.m_grid.shape)        
         pose = []
         for i, p in enumerate(ipose):
             pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)                
-        self.m_grid = self.reset_grid()                
+        #self.m_grid = self.reset_grid()                
         return pose
     
     def plot(self):
