@@ -62,10 +62,10 @@ def plot_robot_pose(x, y, Y, color, label = None):
     plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label)
     plt.legend()    
 
-def plot_exp_base(figure, test_params, landmarks_params, landmarks):
+def plot_exp_base(figure, test_params, landmarks_params, landmarks, padding = 1):
     figure.clf()
-    plt.xlim(-test_params['field']['x_max'], test_params['field']['x_max'])
-    plt.ylim(-test_params['field']['y_max'], test_params['field']['y_max'])
+    plt.xlim(-test_params['field']['x_max'] - padding, test_params['field']['x_max'] + padding)
+    plt.ylim(-test_params['field']['y_max'] - padding, test_params['field']['y_max'] + padding)
     ax = plt.gca()    
     ax.set_aspect('equal', 'box')
     plt.title("Sim step {} of {}, dt = {}".format(test_params['sim']['step'], test_params['sim']['steps'], test_params['sim']['dt']))
@@ -135,6 +135,7 @@ if __name__ == '__main__':
     
     amcl_params = {}
     amcl_params['NP'] = 1000
+    amcl_params['NPmax'] = 2000
     amcl_params['dims'] = {}
     amcl_params['dims']['x'] = {}
     amcl_params['dims']['x']['min'] = -test_params['field']['x_max']
@@ -145,7 +146,7 @@ if __name__ == '__main__':
     amcl_params['dims']['Y'] = {}
     amcl_params['dims']['Y']['min'] = -np.pi
     amcl_params['dims']['Y']['max'] = np.pi
-    amcl_params['calc_type'] = "ADDITION"
+    amcl_params['calc_type'] = "MULTIPLICATION"
     amcl = AMCL2D(amcl_params)
         
     field_figure = plt.figure()             

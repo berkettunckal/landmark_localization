@@ -7,7 +7,7 @@
 import landmark_localization.landmark_localization_core as llc
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.stats import norm
+from scipy.stats import norm, circmean
 
 class AMCL2D(llc.LandmarkLocalization):
     
@@ -25,27 +25,42 @@ class AMCL2D(llc.LandmarkLocalization):
         super(AMCL2D, self).__init__()
         if not 'NP' in params:
             params['NP'] = 100
+        if not 'NPmax' in params:
+            params['NPmax'] = 100        
+        if params['NPmax'] < params['NP']:
+            print("amcl: NPmax cannot be less than NP!")
+            params['NPmax'] = params['NP']
         if not 'calc_type' in params or (params['calc_type'] != "ADDITION" and params['calc_type'] != "MULTIPLICATION"):
             params['calc_type'] = "ADDITION"                    
         if not 'alpha' in params:
             params['alpha'] = [1,1,1,1,1,1]
+        if not 'alpha_slow' in params:
+            params['alpha_slow'] = 0.0001
+        if not 'alpha_fast' in params:
+            params['alpha_fast'] = 0.1            
         
         self.params = params                    
-        self.alpha_mat = np.array(params['alpha']).reshape(3,2).T
+        self.alpha_mat = np.array(params['alpha']).reshape(3,2).T                
         self.init_pf()
         
     def init_pf(self):
         size = (self.params['NP'],1)
-        self.P = np.hstack((np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),
-                            np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),
-                            np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size)))
+        self.P = np.hstack(self.get_random_pose(size))
         self.init_weight()
+        self.w_avg = 0
+        self.w_slow = 0
+        self.w_fast = 0
+        
+    def get_random_pose(self, size):
+        return (np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size))
         
     def init_weight(self):
         if self.params['calc_type'] == 'ADDITION':
-            self.W = np.zeros(self.params['NP'])
+            #self.W = np.zeros(self.params['NP'])
+            self.W = np.zeros(self.P.shape[0])
         else:
-            self.W = np.ones(self.params['NP'])
+            #self.W = np.ones(self.params['NP'])
+            self.W = np.ones(self.P.shape[0])            
             
     def motion_update(self, motion_params):
         U = np.array((motion_params['vx'],motion_params['wY'])).reshape(1,2)
@@ -65,8 +80,14 @@ class AMCL2D(llc.LandmarkLocalization):
         self.P[:,0] = self.P[:,0] + v2w * (-np.sin(self.P[:,2]) + np.sin(self.P[:,2] + U_[:,1] * motion_params['dt']))
         self.P[:,1] = self.P[:,1] + v2w * (np.cos(self.P[:,2]) - np.cos(self.P[:,2] + U_[:,1] * motion_params['dt']))
         self.P[:,2] = self.P[:,2] + (U_[:,1] + U_[:,2]) * motion_params['dt']
-        
+        self.P[:,2] = llc.norm_angle(self.P[:,2])
+                
+        self.check_borders()
         self.init_weight()
+        
+    def check_borders(self):
+        for i, ax in enumerate(['x', 'y', 'Y']):
+            self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i])                                            
         
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
@@ -85,11 +106,9 @@ class AMCL2D(llc.LandmarkLocalization):
             mrl = np.repeat(rl, self.P.shape[0], axis = 0)
             dx = mrl[:,0] - mP[:,0]
             dy = mrl[:,1] - mP[:,1]
-            dr = np.hypot(dx, dy)
-            w_all = norm.pdf(dr, scale = mrl[:,3])
-            print(w_all)
-            w = w_all.reshape((rl.shape[0], self.P.shape[0]))
-            
+            dr = np.hypot(dx, dy) - mrl[:,2]
+            w_all = norm.pdf(dr, scale = mrl[:,3])            
+            w = w_all.reshape((rl.shape[0], self.P.shape[0]))            
             
             if self.params['calc_type'] == 'ADDITION':
                 w = np.sum(w, axis = 0)
@@ -99,21 +118,60 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W *= w
             
         if len(al) != 0:
-            al = np.array(al)
+            al = np.array(al)        
+            mP = np.tile(self.P, [rl.shape[0], 1])
+            mal = np.repeat(al, self.P.shape[0], axis = 0)
+            dx = mrl[:,0] - mP[:,0]
+            dy = mrl[:,1] - mP[:,1]
+            a_glob = np.arctan2(-dy, -dx)
+            a = llc.substract_angles(a_glob, mP[:,2])
+            da = llc.substract_angles(a, mal[:,2])            
+            w_all = norm.pdf(da, scale = mal[:,3])            
+            w = w_all.reshape((al.shape[0], self.P.shape[0]))            
+            
+            if self.params['calc_type'] == 'ADDITION':
+                w = np.sum(w, axis = 0)
+                self.W += w
+            else:
+                w = np.prod(w, axis = 0)
+                self.W *= w
+            
+            
         
+    def get_pose(self):                     
+        self.resampling()
+        #self.W /= np.sum(self.W)
+        #robot_pose = np.dot(self.W, self.P)              
+        robot_pose = np.mean(self.P, axis=0)
+        robot_pose[2] = circmean(self.P[:,2])
+        return robot_pose    
+
+    def resampling(self):                                
+        self.w_avg = np.mean(self.W)
+        # get NP particles from previous
+        N = self.W.shape[0]
+        self.W /= np.sum(self.W)
+        indexes = np.random.choice(N, size = self.params['NP'], p = self.W)        
+        self.P = self.P[indexes,:]
         
-    def get_pose(self):
-        sumW = np.sum(self.W)
-        print(sumW)
-        if sumW == 0 or sumW == float('nan'):
-            self.init_pf()
-            sumW = 1
-        self.W /= sumW
-        robot_pose = np.dot(self.W, self.P)        
-        return robot_pose        
+        # add extra particles 
+        Padd = []        
+        self.w_slow += self.params['alpha_slow'] * (self.w_avg - self.w_slow)
+        self.w_fast += self.params['alpha_fast'] * (self.w_avg - self.w_fast)                                
+        p = max(0.0, 1.0 - self.w_fast/self.w_slow)        
+        for _ in range(self.params['NPmax'] - self.params['NP']):
+            if np.random.uniform(0,1) <= p:
+                Padd.append(self.get_random_pose(1))
+        if len(Padd) > 0:
+            Padd = np.array(Padd)
+            #print(self.P.shape, Padd.shape)
+            self.P = np.vstack((self.P, Padd[:,:,0]))
+                              
+        print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))
+            
         
     def plot(self, lenght = 0.2, color = 'blue'):
-        for p in range(self.params['NP']):
+        for p in range(self.P.shape[0]):
             plt.arrow(self.P[p,0], self.P[p,1], np.cos(self.P[p,2])*lenght, np.sin(self.P[p,2])*lenght, color = color, shape = 'full', head_width=0.1)
                            
         

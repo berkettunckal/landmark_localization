@@ -71,5 +71,8 @@ class LandmarkLocalization(object):
 def substract_angles(target, source):
     return np.arctan2(np.sin(target-source), np.cos(target-source))
 
+def norm_angle(value):
+    return (value + np.pi) % (2*np.pi) - np.pi
+
 if __name__ == "__main__":
     pass
