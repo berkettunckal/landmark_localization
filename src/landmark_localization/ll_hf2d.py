@@ -143,9 +143,9 @@ class HF2D(llc.LandmarkLocalization):
                 pY = norm.pdf(da, scale = landmark_param['sa'])
                 
                 if self.params['calc_type'] == "ADDITION":                            
-                    self.s_grid += pY
+                    self.s_grid += pY * self.params['yaw_discount']
                 else:
-                    self.s_grid *= pY                
+                    self.s_grid *= pY * self.params['yaw_discount']
                     
     def merge_grids(self):
         if self.params['calc_type'] == "ADDITION":                                        
@@ -166,11 +166,12 @@ class HF2D(llc.LandmarkLocalization):
     def calc_cov(self, pose):
         dx = self.xx_mg - pose[0]
         dy = self.yy_mg - pose[1]
-        dX = np.array((dx.flatten(), dy.flatten()))        
-        #w = self.m_grid[:,:,0].flatten()
-        w = np.sum(self.m_grid, axis = 2).flatten()
+        dX = np.array((dx.flatten(), dy.flatten()))
+        dX = np.repeat(dX, self.params['dims']['Y']['size'], axis = 1)
+        w = self.m_grid.flatten()
         w = w / np.sum(w)
-        return np.dot( dX * w , dX.T)                    
+        # TODO: add angle covs!
+        return np.dot( dX * w , dX.T)
     
     def plot(self):
         plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)

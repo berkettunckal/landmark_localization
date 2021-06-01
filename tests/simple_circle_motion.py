@@ -90,7 +90,7 @@ if __name__ == '__main__':
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
-    test_params['field']['N_landmarks'] = 3
+    test_params['field']['N_landmarks'] = 10
     test_params['field']['x_max'] = 10
     test_params['field']['y_max'] = 10
     
@@ -107,7 +107,7 @@ if __name__ == '__main__':
     test_params['sensor']['max_r'] = 10
     test_params['sensor']['max_a'] = np.pi
     test_params['sensor']['sr'] = 0.1
-    test_params['sensor']['sa'] = 0.1
+    test_params['sensor']['sa'] = 0.01
     
     landmarks = generate_landmarks(test_params)        
     #TODO: read/write params from file    

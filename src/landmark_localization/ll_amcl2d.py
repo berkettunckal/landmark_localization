@@ -55,11 +55,9 @@ class AMCL2D(llc.LandmarkLocalization):
         return (np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size))
         
     def init_weight(self):
-        if self.params['calc_type'] == 'ADDITION':
-            #self.W = np.zeros(self.params['NP'])
+        if self.params['calc_type'] == 'ADDITION':            
             self.W = np.zeros(self.P.shape[0])
         else:
-            #self.W = np.ones(self.params['NP'])
             self.W = np.ones(self.P.shape[0])            
             
     def motion_update(self, motion_params):
@@ -134,15 +132,7 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W += w
             else:
                 w = np.prod(w, axis = 0)
-                self.W *= w
-                        
-        
-    #def get_pose(self):                     
-        #self.resampling()        
-        #robot_pose = np.mean(self.P, axis=0)
-        #robot_pose[2] = circmean(self.P[:,2])
-        #self.cov = self.calc_cov(robot_pose)
-        #return robot_pose
+                self.W *= w                    
 
     def get_pose(self):                             
         Wnorm = self.W / np.sum(self.W)
@@ -176,12 +166,10 @@ class AMCL2D(llc.LandmarkLocalization):
             if np.random.uniform(0,1) <= p:
                 Padd.append(self.get_random_pose(1))
         if len(Padd) > 0:
-            Padd = np.array(Padd)
-            #print(self.P.shape, Padd.shape)
+            Padd = np.array(Padd)            
             self.P = np.vstack((self.P, Padd[:,:,0]))
                               
-        print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))
-            
+        #print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))            
         
     def plot(self, lenght = 0.2, color = 'blue'):
         for p in range(self.P.shape[0]):

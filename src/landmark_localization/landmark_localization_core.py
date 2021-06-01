@@ -84,6 +84,9 @@ def norm_angle(value):
 
 def plot_cov(ax, X, P, std_n = 1, color = 'k'):
     Pxy = P[0:2, 0:2]
+    if not np.isfinite(Pxy).all():
+        print("Can't draw cov ellipse, nan\inf values in matrix!")
+        return
     lambda_, v = np.linalg.eig(Pxy)    
     lambda_ = np.sqrt(lambda_)
     ell = Ellipse(xy=X[:2], width=lambda_[0]*2*std_n, height=lambda_[1]*2*std_n, angle=np.rad2deg(np.arccos(v[0,0])), ec = color, fc = 'none', ls = ':')    
