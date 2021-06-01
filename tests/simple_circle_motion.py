@@ -90,7 +90,7 @@ if __name__ == '__main__':
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
-    test_params['field']['N_landmarks'] = 10
+    test_params['field']['N_landmarks'] = 3
     test_params['field']['x_max'] = 10
     test_params['field']['y_max'] = 10
     
@@ -139,6 +139,8 @@ if __name__ == '__main__':
     amcl_params = {}
     amcl_params['NP'] = 1000
     amcl_params['NPmax'] = 2000
+    amcl_params['alpha_slow'] = 0.05
+    amcl_params['alpha_fast'] = 0.1
     amcl_params['dims'] = {}
     amcl_params['dims']['x'] = {}
     amcl_params['dims']['x']['min'] = -test_params['field']['x_max']
@@ -187,8 +189,7 @@ if __name__ == '__main__':
         
         hf.plot()        
         plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
-        plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')
-        print(hf.get_cov())
+        plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
         plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
         
         amcl.plot()

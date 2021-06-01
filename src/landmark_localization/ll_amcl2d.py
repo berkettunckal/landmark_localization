@@ -137,20 +137,27 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W *= w
                         
         
-    def get_pose(self):                     
-        self.resampling()
-        #self.W /= np.sum(self.W)
-        #robot_pose = np.dot(self.W, self.P)              
-        robot_pose = np.mean(self.P, axis=0)
-        robot_pose[2] = circmean(self.P[:,2])
+    #def get_pose(self):                     
+        #self.resampling()        
+        #robot_pose = np.mean(self.P, axis=0)
+        #robot_pose[2] = circmean(self.P[:,2])
+        #self.cov = self.calc_cov(robot_pose)
+        #return robot_pose
+
+    def get_pose(self):                             
+        Wnorm = self.W / np.sum(self.W)
+        robot_pose = np.dot(Wnorm, self.P)              
+        robot_pose[2] = mean_angles(self.P[:,2].tolist(), self.W.tolist())
+
         self.cov = self.calc_cov(robot_pose)
-        return robot_pose    
+        self.resampling()
+        return robot_pose            
     
     def calc_cov(self, pose):
         dX = np.zeros(self.P.shape)
         dX[:, :2] = self.P[:,:2] - pose[:2]
-        dX[:,2] = llc.substract_angles(self.P[:,2], pose[2])
-        return np.dot(dX, dX.T)        
+        dX[:,2] = llc.substract_angles(self.P[:,2], pose[2])        
+        return np.dot(dX * np.expand_dims(self.W, axis=1), dX.T)        
 
     def resampling(self):                                
         self.w_avg = np.mean(self.W)
@@ -180,6 +187,13 @@ class AMCL2D(llc.LandmarkLocalization):
         for p in range(self.P.shape[0]):
             plt.arrow(self.P[p,0], self.P[p,1], np.cos(self.P[p,2])*lenght, np.sin(self.P[p,2])*lenght, color = color, shape = 'full', head_width=0.1)
                            
+def mean_angles(angles, weights):
+    x = y = 0.
+    for angle, weight in zip(angles, weights):
+        x += np.cos(angle) * weight
+        y += np.sin(angle) * weight
+    mean = np.arctan2(y, x)
+    return mean
         
 if __name__ == '__main__': 
     pass

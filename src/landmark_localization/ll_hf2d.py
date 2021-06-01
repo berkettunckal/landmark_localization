@@ -166,8 +166,7 @@ class HF2D(llc.LandmarkLocalization):
     def calc_cov(self, pose):
         dx = self.xx_mg - pose[0]
         dy = self.yy_mg - pose[1]
-        dX = np.array((dx.flatten(), dy.flatten()))
-        print(dX.shape)
+        dX = np.array((dx.flatten(), dy.flatten()))        
         #w = self.m_grid[:,:,0].flatten()
         w = np.sum(self.m_grid, axis = 2).flatten()
         w = w / np.sum(w)
