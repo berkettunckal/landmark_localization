@@ -80,6 +80,8 @@ class HF2D(llc.LandmarkLocalization):
     
     def motion_update(self, motion_params):
         # TODO super check params
+        
+        # TODO stash motion between steps without landmark update
         r = motion_params['dt'] * motion_params['vx']
         da = motion_params['dt'] * motion_params['wY']
         a_shift = int(da / self.params['dims']['Y']['res'])                
@@ -106,7 +108,7 @@ class HF2D(llc.LandmarkLocalization):
             elif y_shift < 0:
                 self.m_grid[:,y_shift:,yaw_row] = self.m_grid[:,:-y_shift,yaw_row]
         
-            self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'])
+            self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'] * r)
             
         self.s_grid = self.reset_grid()
     
@@ -158,7 +160,18 @@ class HF2D(llc.LandmarkLocalization):
         for i, p in enumerate(ipose):
             pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)                
         #self.m_grid = self.reset_grid()                
+        self.cov = self.calc_cov(pose)
         return pose
+    
+    def calc_cov(self, pose):
+        dx = self.xx_mg - pose[0]
+        dy = self.yy_mg - pose[1]
+        dX = np.array((dx.flatten(), dy.flatten()))
+        print(dX.shape)
+        #w = self.m_grid[:,:,0].flatten()
+        w = np.sum(self.m_grid, axis = 2).flatten()
+        w = w / np.sum(w)
+        return np.dot( dX * w , dX.T)                    
     
     def plot(self):
         plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)

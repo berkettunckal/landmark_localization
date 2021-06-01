@@ -135,8 +135,7 @@ class AMCL2D(llc.LandmarkLocalization):
             else:
                 w = np.prod(w, axis = 0)
                 self.W *= w
-            
-            
+                        
         
     def get_pose(self):                     
         self.resampling()
@@ -144,7 +143,14 @@ class AMCL2D(llc.LandmarkLocalization):
         #robot_pose = np.dot(self.W, self.P)              
         robot_pose = np.mean(self.P, axis=0)
         robot_pose[2] = circmean(self.P[:,2])
+        self.cov = self.calc_cov(robot_pose)
         return robot_pose    
+    
+    def calc_cov(self, pose):
+        dX = np.zeros(self.P.shape)
+        dX[:, :2] = self.P[:,:2] - pose[:2]
+        dX[:,2] = llc.substract_angles(self.P[:,2], pose[2])
+        return np.dot(dX, dX.T)        
 
     def resampling(self):                                
         self.w_avg = np.mean(self.W)

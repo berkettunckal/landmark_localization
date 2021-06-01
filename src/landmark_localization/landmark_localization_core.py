@@ -5,11 +5,13 @@
 landmark_localization is ROS-independed parent class for all localization methods
 '''
 import numpy as np
+from matplotlib.patches import Ellipse
+import matplotlib.pyplot as plt
 
 class LandmarkLocalization(object):
     
     def __init__(self):
-        pass
+        self.cov = None
         
     '''
     motion_params - dict:
@@ -65,14 +67,27 @@ class LandmarkLocalization(object):
     def get_pose(self):
         raise NotImplementedError('get_pose')
     
+    def calc_cov(self, pose):
+        raise NotImplementedError('calc_cov')
+    
+    def get_cov(self):
+        return self.cov
+    
     def plot(self):
-        raise NotImplementedError('plot')
+        raise NotImplementedError('plot')        
     
 def substract_angles(target, source):
     return np.arctan2(np.sin(target-source), np.cos(target-source))
 
 def norm_angle(value):
     return (value + np.pi) % (2*np.pi) - np.pi
+
+def plot_cov(ax, X, P, std_n = 1, color = 'k'):
+    Pxy = P[0:2, 0:2]
+    lambda_, v = np.linalg.eig(Pxy)    
+    lambda_ = np.sqrt(lambda_)
+    ell = Ellipse(xy=X[:2], width=lambda_[0]*2*std_n, height=lambda_[1]*2*std_n, angle=np.rad2deg(np.arccos(v[0,0])), ec = color, fc = 'none', ls = ':')    
+    ax.add_artist(ell)        
 
 if __name__ == "__main__":
     pass
