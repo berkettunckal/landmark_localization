@@ -103,7 +103,8 @@ class AMCL2D(llc.LandmarkLocalization):
             mP = np.tile(self.P, [rl.shape[0], 1])
             mrl = np.repeat(rl, self.P.shape[0], axis = 0)
             dx = mrl[:,0] - mP[:,0]
-            dy = mrl[:,1] - mP[:,1]
+            dy = mrl[:,1] - mP[:,1]     
+            #print(dx.shape, dy.shape)
             dr = np.hypot(dx, dy) - mrl[:,2]
             w_all = norm.pdf(dr, scale = mrl[:,3])            
             w = w_all.reshape((rl.shape[0], self.P.shape[0]))            

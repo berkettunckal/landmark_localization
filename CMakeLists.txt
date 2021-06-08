@@ -203,3 +203,8 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+if ("$ENV{ROS_DISTRO}" STREQUAL "noetic")
+catkin_install_python(PROGRAMS
+    scripts/ll_amcl_ros_2d.py
+    DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+endif()
