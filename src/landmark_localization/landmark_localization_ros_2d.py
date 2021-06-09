@@ -102,20 +102,19 @@ class LandmarkLocalizationRos2D(object):
     def eod_msg_to_landmarks_params(self, msg, ids = [], sub_ids = []):
         if self.landmark_transform is None:
             try:    
-                cam_bl_tf = self.tf_buffer.lookup_transform(msg.header.frame_id, 
-                                                            self.base_frame,
+                bl_cam_tf = self.tf_buffer.lookup_transform(self.base_frame,
+                                                            msg.header.frame_id, 
                                                             rospy.Time(0), 
                                                             rospy.Duration(0.1))
                 
                 self.landmark_transform = tf.transformations.compose_matrix(
-                    translate = [cam_bl_tf.transform.translation.x,
-                                 cam_bl_tf.transform.translation.y,
-                                 cam_bl_tf.transform.translation.z],
-                    angles = euler_from_quaternion_msg(cam_bl_tf.transform.rotation))
-                
-                
+                    translate = [bl_cam_tf.transform.translation.x,
+                                 bl_cam_tf.transform.translation.y,
+                                 bl_cam_tf.transform.translation.z],
+                    angles = euler_from_quaternion_msg(bl_cam_tf.transform.rotation))
+                                
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException,tf2_ros.ExtrapolationException):
-                rospy.logerr('[{}] timed out transform {} to {}'.format(rospy.get_name(), msg.header.frame_id, self.base_frame))
+                rospy.logerr('[{}] timed out transform {} to {}, can\'t proceed landmark data'.format(rospy.get_name(), self.base_frame, msg.header.frame_id))
                 return            
             
         landmarks_params = []
@@ -127,12 +126,12 @@ class LandmarkLocalizationRos2D(object):
                     landmark_param['y'] = self.landmark_map[so.extracted_info[0].sub_id]['y']
                     
                     vector_src = np.array([[so.transform.translation.x, so.transform.translation.y, so.transform.translation.z, 0]]).T                                        
-                    vector_dst = np.dot(self.landmark_transform, vector_src)
+                    vector_dst = np.dot(self.landmark_transform, vector_src)                    
                     
                     if so.transform.translation.z != 1:# z = 1 means real transform is't known
                         landmark_param['r'] = np.hypot(vector_dst[0], vector_dst[1])
                         landmark_param['sr'] = self.landmark_r_sigma
-                    landmark_param['a'] = np.arctan2(vector_dst[1], vector_dst[0])
+                    landmark_param['a'] = np.arctan2(-vector_dst[1], -vector_dst[0]) #NOTE: not sure it is good
                     landmark_param['sa'] = self.landmark_a_sigma
                     
                     landmarks_params.append(landmark_param)
@@ -201,8 +200,8 @@ class LandmarkLocalizationRos2D(object):
         map_bl_mat = tf.transformations.compose_matrix(
             translate = [robot_pose[0],robot_pose[1], 0.],
             angles = [0., 0., robot_pose[2]])
-        
-        map_odom_mat = np.dot(np.linalg.inv(odom_bl_mat), map_bl_mat) 
+                
+        map_odom_mat = np.dot(map_bl_mat, np.linalg.inv(odom_bl_mat))
         
         _, _, angles, trans, _ = tf.transformations.decompose_matrix(map_odom_mat)
         
