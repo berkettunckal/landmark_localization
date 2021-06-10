@@ -92,7 +92,7 @@ if __name__ == '__main__':
     test_params['field'] = {}
     test_params['field']['N_landmarks'] = 10
     test_params['field']['x_max'] = 10
-    test_params['field']['y_max'] = 10
+    test_params['field']['y_max'] = 12
     
     test_params['robot'] = {}
     test_params['robot']['x'] = 0
