@@ -6,7 +6,7 @@ from landmark_localization.landmark_localization_ros_2d import LandmarkLocalizat
 from landmark_localization.ll_utils import quaternion_msg_from_yaw
 from landmark_localization.ll_amcl2d import AMCL2D
 from geometry_msgs.msg import PoseArray, Pose
-from std_msgs.msg import Float64MultiArray
+from std_msgs.msg import Float64MultiArray, MultiArrayDimension
 
 class AMCLROS2D(LandmarkLocalizationRos2D):
     
@@ -41,8 +41,17 @@ class AMCLROS2D(LandmarkLocalizationRos2D):
         if self.publish_debug:
             msg = Float64MultiArray()            
             msg.data.append(self.ll_method.w_avg)
+            d = MultiArrayDimension()
+            d.label = "w_avg"
+            msg.layout.dim.append(d)
             msg.data.append(self.ll_method.w_slow)
+            d = MultiArrayDimension()
+            d.label = "w_slow"
+            msg.layout.dim.append(d)
             msg.data.append(self.ll_method.w_fast)            
+            d = MultiArrayDimension()
+            d.label = "w_fast"
+            msg.layout.dim.append(d)
             self.debug_pub.publish(msg)        
 
 if __name__ == '__main__': 

@@ -39,6 +39,8 @@ class AMCL2D(llc.LandmarkLocalization):
         if not 'alpha_fast' in params:
             params['alpha_fast'] = 0.1            
         
+        self.was_landmark_update = False
+        
         self.params = params                    
         self.alpha_mat = np.array(params['alpha']).reshape(3,2).T                
         self.init_pf()
@@ -116,6 +118,8 @@ class AMCL2D(llc.LandmarkLocalization):
             else:
                 w = np.prod(w, axis = 0)
                 self.W *= w
+                
+            self.was_landmark_update = True
             
         if len(al) != 0:
             al = np.array(al, dtype = np.float64)        
@@ -134,7 +138,9 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W += w
             else:
                 w = np.prod(w, axis = 0)
-                self.W *= w                    
+                self.W *= w           
+                
+            self.was_landmark_update = True
 
     def get_pose(self):                             
         Wnorm = self.W / np.sum(self.W)
@@ -142,7 +148,9 @@ class AMCL2D(llc.LandmarkLocalization):
         robot_pose[2] = mean_angles(self.P[:,2].tolist(), self.W.tolist())
 
         self.cov = self.calc_cov(robot_pose)
-        self.resampling()
+        if self.was_landmark_update:
+            self.resampling()
+        self.was_landmark_update = False
         return robot_pose            
     
     def calc_cov(self, pose):
