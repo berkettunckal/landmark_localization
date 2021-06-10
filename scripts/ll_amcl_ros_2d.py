@@ -2,9 +2,11 @@
 # coding: utf-8
 
 import rospy
-from landmark_localization.landmark_localization_ros_2d import LandmarkLocalizationRos2D, quaternion_msg_from_yaw
+from landmark_localization.landmark_localization_ros_2d import LandmarkLocalizationRos2D
+from landmark_localization.ll_utils import quaternion_msg_from_yaw
 from landmark_localization.ll_amcl2d import AMCL2D
 from geometry_msgs.msg import PoseArray, Pose
+from std_msgs.msg import Float64MultiArray
 
 class AMCLROS2D(LandmarkLocalizationRos2D):
     
@@ -13,6 +15,10 @@ class AMCLROS2D(LandmarkLocalizationRos2D):
         
         amcl_params = rospy.get_param("~amcl_params",{})        
         amcl = AMCL2D(amcl_params)        
+        
+        self.publish_debug = rospy.get_param("~publish_debug", False)
+        if self.publish_debug:
+            self.debug_pub = rospy.Publisher("~debug", Float64MultiArray, queue_size = 1)
                         
         super(AMCLROS2D, self).__init__(amcl)
         if self.visualizate_output:
@@ -29,6 +35,15 @@ class AMCLROS2D(LandmarkLocalizationRos2D):
             pose.orientation = quaternion_msg_from_yaw(self.ll_method.P[p,2])
             msg.poses.append(pose)
         self.vis_pub.publish(msg)
+        
+    def proc_cb(self, event):
+        super(AMCLROS2D, self).proc_cb(event)        
+        if self.publish_debug:
+            msg = Float64MultiArray()            
+            msg.data.append(self.ll_method.w_avg)
+            msg.data.append(self.ll_method.w_slow)
+            msg.data.append(self.ll_method.w_fast)            
+            self.debug_pub.publish(msg)        
 
 if __name__ == '__main__': 
     amclros2d = AMCLROS2D()

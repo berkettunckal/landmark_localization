@@ -10,6 +10,8 @@ from nav_msgs.msg import Odometry
 from extended_object_detection.msg import SimpleObjectArray
 from landmark_localization.landmark_map import LandmarkMap
 from geometry_msgs.msg import Quaternion, Pose, PoseStamped, PoseWithCovariance, PoseWithCovarianceStamped, TransformStamped
+from visualization_msgs.msg import MarkerArray
+import landmark_localization.ll_utils as ll_utils
 
 class LandmarkLocalizationRos2D(object):
     def __init__(self, ll_method):        
@@ -72,6 +74,10 @@ class LandmarkLocalizationRos2D(object):
         
         # visualization
         self.visualizate_output = rospy.get_param("~visualizate_output", True)
+        self.visualizate_map = rospy.get_param("~visualizate_map", True)
+        
+        if self.visualizate_map:
+            self.map_pub = rospy.Publisher("~landmark_map", MarkerArray, queue_size = 1)
         
         proc_rate = rospy.get_param('proc_rate_hz', 5.0)        
                         
@@ -111,7 +117,7 @@ class LandmarkLocalizationRos2D(object):
                     translate = [bl_cam_tf.transform.translation.x,
                                  bl_cam_tf.transform.translation.y,
                                  bl_cam_tf.transform.translation.z],
-                    angles = euler_from_quaternion_msg(bl_cam_tf.transform.rotation))
+                    angles = ll_utils.euler_from_quaternion_msg(bl_cam_tf.transform.rotation))
                                 
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException,tf2_ros.ExtrapolationException):
                 rospy.logerr('[{}] timed out transform {} to {}, can\'t proceed landmark data'.format(rospy.get_name(), self.base_frame, msg.header.frame_id))
@@ -137,6 +143,13 @@ class LandmarkLocalizationRos2D(object):
                     landmarks_params.append(landmark_param)
         return landmarks_params                
         
+    def get_id_list_from_eod_msg(self, msg):
+        ids = []
+        for so in msg.objects:
+            #if so.type_id in 
+            ids.append(so.extracted_info[0].sub_id)
+        return ids                    
+    
     def odom_cb(self, msg):
         self.last_odom_msg = msg
     
@@ -144,41 +157,49 @@ class LandmarkLocalizationRos2D(object):
         self.last_landmark_msg = msg
     
     def proc_cb(self, event):
+        current_time = rospy.Time.now()
         # NOTE check odom time? but if it not passed proove what to do?
         if not self.last_odom_msg is None:
             mp = self.odom_msg_to_motion_params(self.last_odom_msg)                
             self.ll_method.motion_update(mp)     
             self.last_odom_msg = None
         
+        id_list = []
         if not self.last_landmark_msg is None:
-            if (rospy.Time.now() - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
+            if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
                 lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.used_eod_ids, self.used_map_ids)
                 self.ll_method.landmarks_update(lp)
+                if self.visualizate_map:
+                    id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg)
+                    self.last_landmark_msg = None
             else:
                 rospy.logwarn("[{}] skipped landmark data due to old timestamp.".format(rospy.get_name()))
             
         robot_pose = self.ll_method.get_pose()
         
-        out_msg_p = robot_pose_to_pose(robot_pose)
+        out_msg_p = ll_utils.robot_pose_to_pose(robot_pose)
         if any(item in self.output_data_format for item in ['pc', 'pcs', 'o']):
             cov = self.ll_method.get_cov()
         for df, msg_t in self.output_pubs.items():
             if df == 'p':
                 self.output_pubs[df].publish(out_msg_p)
             if df == 'ps':
-                self.output_pubs[df].publish(robot_pose_to_pose_stamped(robot_pose, self.map_frame))
+                self.output_pubs[df].publish(ll_utils.robot_pose_to_pose_stamped(robot_pose, self.map_frame))
             if df == 'pc':
-                self.output_pubs[df].publish(robot_pose_to_pose_with_covariance(robot_pose, cov))
+                self.output_pubs[df].publish(ll_utils.robot_pose_to_pose_with_covariance(robot_pose, cov))
             if df == 'pcs':
-                self.output_pubs[df].publish(robot_pose_to_pose_with_covariance_stamped(robot_pose, cov, self.map_frame))
+                self.output_pubs[df].publish(ll_utils.robot_pose_to_pose_with_covariance_stamped(robot_pose, cov, self.map_frame))
             if df == 'o':
-                self.output_pubs[df].publish(robot_pose_to_odometry(robot_pose, cov, self.map_frame, self.odom_frame, [0,0], []))       
+                self.output_pubs[df].publish(ll_utils.robot_pose_to_odometry(robot_pose, cov, self.map_frame, self.odom_frame, [0,0], []))       
                 
         if self.publish_tf:
             self.do_publish_tf(robot_pose)
             
         if self.visualizate_output:
             self.visualizate()
+                    
+        if self.visualizate_map:
+            self.map_pub.publish(self.landmark_map.return_as_marker_array(current_time, self.map_frame, id_list))
                         
     # broadcasts odom from map as correction to new base position
     def do_publish_tf(self, robot_pose):
@@ -195,7 +216,7 @@ class LandmarkLocalizationRos2D(object):
             translate = [odom_bl_tf.transform.translation.x,
                          odom_bl_tf.transform.translation.y,
                          odom_bl_tf.transform.translation.z],
-            angles = euler_from_quaternion_msg(odom_bl_tf.transform.rotation))
+            angles = ll_utils.euler_from_quaternion_msg(odom_bl_tf.transform.rotation))
         
         map_bl_mat = tf.transformations.compose_matrix(
             translate = [robot_pose[0],robot_pose[1], 0.],
@@ -213,7 +234,7 @@ class LandmarkLocalizationRos2D(object):
         tfs.transform.translation.x = trans[0]
         tfs.transform.translation.y = trans[1]
         tfs.transform.translation.z = trans[2]
-        tfs.transform.rotation = quaternion_msg_from_euler(angles)
+        tfs.transform.rotation = ll_utils.quaternion_msg_from_euler(angles)
         
         self.tf_broadcaster.sendTransform(tfs)
         
@@ -223,101 +244,4 @@ class LandmarkLocalizationRos2D(object):
     def visualizate(self):
         raise NotImplementedError('visualizate')
 
-'''
-common output of localization modules to Pose msg
-    robot_pose - [x, y, Y]
-'''
-def robot_pose_to_pose(robot_pose):     
-    pose = Pose()
-    pose.position.x = robot_pose[0]
-    pose.position.y = robot_pose[1]        
-    pose.orientation = quaternion_msg_from_yaw(robot_pose[2])
-    return pose
 
-def robot_pose_to_pose_stamped(robot_pose, frame_id, stamp = None):
-    if stamp is None:
-        stamp = rospy.Time.now()
-    pose = PoseStamped()
-    pose.header.frame_id = frame_id
-    pose.header.stamp = stamp
-    pose.pose = robot_pose_to_pose(robot_pose)
-    return pose
-
-def robot_pose_to_pose_with_covariance(robot_pose, cov_mat):
-    pose = PoseWithCovariance()
-    pose.pose = robot_pose_to_pose(robot_pose)
-    cov = np.zeros(36)
-    cov[0] = cov_mat[0,0] # xx
-    cov[1] = cov_mat[0,1] # xy
-    cov[5] = cov_mat[0,2] # x alpha
-    cov[6] = cov_mat[1,0] # yx
-    cov[7] = cov_mat[1,1] # yy
-    cov[11] = cov_mat[1,2] # y alpha
-    cov[30] = cov_mat[2,0] # alpha x
-    cov[31] = cov_mat[2,1] # alpha y
-    cov[35] = cov_mat[2,2] # alpha alpha
-    pose.covariance = list(cov)
-    return pose
-
-def robot_pose_to_pose_with_covariance_stamped(robot_pose, cov_mat, frame_id, stamp = None):
-    if stamp is None:
-        stamp = rospy.Time.now()
-    pose = PoseWithCovarianceStamped()
-    pose.header.frame_id = frame_id
-    pose.header.stamp = stamp
-    pose.pose = robot_pose_to_pose_with_covariance(robot_pose, cov_mat)
-    return pose
-
-def robot_pose_to_odometry(robot_pose, cov_mat_pose, frame_id, child_frame_id, robot_speed, cov_mat_speed, stamp = None):
-    if stamp is None:
-        stamp = rospy.Time.now()
-    odom = Odometry()
-    odom.header.frame_id = frame_id
-    odom.header.stamp = stamp
-    odom.child_frame_id = child_frame_id
-    odom.pose = robot_pose_to_pose_with_covariance(robot_pose, cov_mat_pose)
-    odom.twist.twist.linear.x = robot_speed[0]
-    odom.twist.twist.angular.z = robot_speed[1]
-    odom_cov = np.zeros(36)
-    odom_cov[0]  = cov_mat_speed[0]   # v v
-    odom_cov[5]  = cov_mat_speed[0,2] # x w
-    odom_cov[30] = cov_mat_speed[2,0] # w x
-    odom_cov[35] = cov_mat_speed[2,2] # w w
-    odom.covariance = list(odom_cov)
-    
-def yaw_from_quaternion_msg(q_msg):
-    qu = []
-    qu.append(q_msg.x)
-    qu.append(q_msg.y)
-    qu.append(q_msg.z)
-    qu.append(q_msg.w)
-
-    yaw = tf.transformations.euler_from_quaternion(qu)[2]
-    return yaw
-
-def euler_from_quaternion_msg(q_msg):
-    qu = []
-    qu.append(q_msg.x)
-    qu.append(q_msg.y)
-    qu.append(q_msg.z)
-    qu.append(q_msg.w)
-
-    return tf.transformations.euler_from_quaternion(qu)    
-
-def quaternion_msg_from_yaw(yaw):
-    qu = tf.transformations.quaternion_from_euler(0,0,yaw)    
-    msg = Quaternion()
-    msg.x = qu[0]
-    msg.y = qu[1]
-    msg.z = qu[2]
-    msg.w = qu[3]
-    return msg
-
-def quaternion_msg_from_euler(euler):
-    qu = tf.transformations.quaternion_from_euler(euler[0],euler[1],euler[2])    
-    msg = Quaternion()
-    msg.x = qu[0]
-    msg.y = qu[1]
-    msg.z = qu[2]
-    msg.w = qu[3]
-    return msg
