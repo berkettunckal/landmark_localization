@@ -150,7 +150,9 @@ class HF2D(llc.LandmarkLocalization):
                 X = self.get_X()
                 
                 p = multivariate_normal.pdf(X.T, mean = shifted, cov = self.cov)
-                self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
+                self.m_grid += p.reshape(self.m_grid.shape)
+                
+                #self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
             
         self.s_grid = self.reset_grid()
     
