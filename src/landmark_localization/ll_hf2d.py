@@ -9,6 +9,8 @@ import numpy as np
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter
+from scipy.spatial.distance import mahalanobis
+from scipy.stats import multivariate_normal
 
 class HF2D(llc.LandmarkLocalization):
     
@@ -31,6 +33,10 @@ class HF2D(llc.LandmarkLocalization):
             params['yaw_discount'] = 1
         if not 'prev_step_weight' in params:
             params['prev_step_weight'] = 0.5
+        if not 'motion_update_type' in params or (params['motion_update_type'] != 'BLUR_SHIFT' and params['motion_update_type'] != 'PREV_COV'):
+            params['motion_update_type'] = 'BLUR_SHIFT'
+        
+            
         
         # TODO check other params
         self.params = params
@@ -55,15 +61,20 @@ class HF2D(llc.LandmarkLocalization):
                                     slice(self.params['dims']['y']['min'],                                
                                 self.params['dims']['y']['min'] + self.params['dims']['y']['res'] * (self.params['dims']['y']['size']),
                                 self.params['dims']['y']['res'])]
+                                                
+        self.cov = None
+        self.prev_pose = None
         
     def get_linspace(self, dim):
         return np.linspace(dim['min'], dim['max'], dim['size'])        
         
     def reset_grid(self):
-        if self.params['calc_type'] == "ADDITION":            
-            grid = np.zeros(self.grid_size)
-        else:
-            grid = np.ones(self.grid_size)
+        #if self.params['calc_type'] == "ADDITION":            
+            #grid = np.zeros(self.grid_size)
+        #else:
+            #grid = np.ones(self.grid_size)
+        grid = np.ones(self.grid_size)
+        grid = grid / grid.size
         return grid
                     
     def count_dim(self, dim):
@@ -81,34 +92,65 @@ class HF2D(llc.LandmarkLocalization):
     def motion_update(self, motion_params):
         # TODO super check params
         
-        # TODO stash motion between steps without landmark update
+        
         r = motion_params['dt'] * motion_params['vx']
         da = motion_params['dt'] * motion_params['wY']
-        a_shift = int(da / self.params['dims']['Y']['res'])                
         
-        if( a_shift > 0 ):            
-            self.m_grid[:,:,:-a_shift] = self.m_grid[:,:,a_shift:]
-        elif a_shift < 0:
-            self.m_grid[:,:,a_shift:] = self.m_grid[:,:,:-a_shift]
-        # NOTE: idk how to blur yaw axis
         
-        for yaw_row in range(self.params['dims']['Y']['size']):            
-            a = self.params['dims']['Y']['min'] + self.params['dims']['Y']['res'] * yaw_row
+        if self.params['motion_update_type'] == 'BLUR_SHIFT':
+            # TODO stash motion between steps without landmark update
+            a_shift = int(da / self.params['dims']['Y']['res'])                
             
-            x_shift = int(r * np.cos(a) / self.params['dims']['x']['res'])
-            y_shift = int(r * np.sin(a) / self.params['dims']['y']['res'])                                
+            if( a_shift > 0 ):            
+                self.m_grid[:,:,:-a_shift] = self.m_grid[:,:,a_shift:]
+            elif a_shift < 0:
+                self.m_grid[:,:,a_shift:] = self.m_grid[:,:,:-a_shift]
+            # NOTE: idk how to blur yaw axis
             
-            if( x_shift > 0 ):            
-                self.m_grid[:-x_shift,:,yaw_row] = self.m_grid[x_shift:,:,yaw_row]
-            elif x_shift < 0:
-                self.m_grid[x_shift:,:,yaw_row] = self.m_grid[:-x_shift,:,yaw_row]
+            for yaw_row in range(self.params['dims']['Y']['size']):            
+                a = self.params['dims']['Y']['min'] + self.params['dims']['Y']['res'] * yaw_row
+                
+                x_shift = int(r * np.cos(a) / self.params['dims']['x']['res'])
+                y_shift = int(r * np.sin(a) / self.params['dims']['y']['res'])                                
+                
+                if( x_shift > 0 ):            
+                    self.m_grid[:-x_shift,:,yaw_row] = self.m_grid[x_shift:,:,yaw_row]
+                elif x_shift < 0:
+                    self.m_grid[x_shift:,:,yaw_row] = self.m_grid[:-x_shift,:,yaw_row]
+                
+                if( y_shift > 0 ):            
+                    self.m_grid[:,:-y_shift,yaw_row] = self.m_grid[:,y_shift:,yaw_row]
+                elif y_shift < 0:
+                    self.m_grid[:,y_shift:,yaw_row] = self.m_grid[:,:-y_shift,yaw_row]
             
-            if( y_shift > 0 ):            
-                self.m_grid[:,:-y_shift,yaw_row] = self.m_grid[:,y_shift:,yaw_row]
-            elif y_shift < 0:
-                self.m_grid[:,y_shift:,yaw_row] = self.m_grid[:,:-y_shift,yaw_row]
-        
-            self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'] * r)
+                self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'] * r)
+        elif self.params['motion_update_type'] == 'PREV_COV':
+            
+            if not self.prev_pose is None:
+                self.m_grid = self.reset_grid()                                
+                
+                #self.prev_pose = np.zeros(3)
+                
+                shifted_Y = da + self.prev_pose[2]
+                shifted_x = self.prev_pose[0] + r * np.cos(shifted_Y)
+                shifted_y = self.prev_pose[1] + r * np.sin(shifted_Y)
+                
+                shifted = np.array([shifted_x, shifted_y, shifted_Y])
+               
+                #dX = self.get_all_d(shifted)
+                #m = np.zeros(dX.shape[0])
+                #for i in range(dX.shape[0]):
+                    #m[i] = mahalanobis(dX[i], np.zeros(3), self.cov)   
+                #print(m)
+                #p = norm.pdf(m, scale = 10)            
+                #print(dX.shape, p.shape, self.m_grid.shape)
+                #self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
+                
+                #print(dX.shape)
+                X = self.get_X()
+                
+                p = multivariate_normal.pdf(X.T, mean = shifted, cov = self.cov)
+                self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
             
         self.s_grid = self.reset_grid()
     
@@ -158,9 +200,9 @@ class HF2D(llc.LandmarkLocalization):
         ipose = np.unravel_index(np.argmax(self.m_grid), self.m_grid.shape)        
         pose = []
         for i, p in enumerate(ipose):
-            pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)                
-        #self.m_grid = self.reset_grid()                
+            pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)                        
         self.cov = self.calc_cov(pose)
+        self.prev_pose = pose
         return pose
     
     def calc_cov(self, pose):
@@ -168,8 +210,15 @@ class HF2D(llc.LandmarkLocalization):
         w = w.flatten()
         w = w / np.sum(w)        
         
+        dX = self.get_all_d(pose)
+                
+        return np.dot( dX * w , dX.T)
+    
+    def get_all_d(self, pose):
         dx = self.xx_mg - pose[0]
         dy = self.yy_mg - pose[1]
+        #dx = self.x_ls - pose[0]
+        #dy = self.y_ls - pose[1]
         dY = llc.substract_angles(self.Y_ls, pose[2])
         
         dxy = np.array(( dx.flatten(), dy.flatten() ))
@@ -178,12 +227,26 @@ class HF2D(llc.LandmarkLocalization):
         dYY = np.tile(dY, self.x_ls.shape[0] * self.y_ls.shape[0])
                 
         dX = np.vstack((dxy, dYY))        
+        #print(dxy.shape, dY.shape, dYY.shape, self.m_grid.shape, dX.shape)                                
+        return dX
+    
+    def get_X(self):
+        # TODO not nessesary to calc it again and again
+        xy = np.array(( self.xx_mg.flatten(), self.yy_mg.flatten() ))
+        xy = np.repeat(xy, self.params['dims']['Y']['size'], axis = 1)
+        YY = np.tile(self.Y_ls, self.x_ls.shape[0] * self.y_ls.shape[0])
+        X = np.vstack((xy, YY))        
+        return X
         
-        #print(dxy.shape, dY.shape, dYY.shape, w.shape, dX.shape)                                
-        return np.dot( dX * w , dX.T)
     
     def plot(self):
         plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)
+
+#def mahalanobis(d, V):
+    #VI = np.linalg.inv(V)    
+    #print(d.shape, VI.shape)
+    #return np.sqrt( np.dot( np.dot(d.T, VI), d) )
+    
         
 if __name__ == '__main__': 
     pass
