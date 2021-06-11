@@ -127,15 +127,23 @@ class HF2D(llc.LandmarkLocalization):
         elif self.params['motion_update_type'] == 'PREV_COV':
             
             if not self.prev_pose is None:
+                print(r, da)
                 self.m_grid = self.reset_grid()                                
                 
                 #self.prev_pose = np.zeros(3)
                 
-                shifted_Y = da + self.prev_pose[2]
+                shifted_Y = (self.prev_pose[2] + da + np.pi)%(2*np.pi) - np.pi
                 shifted_x = self.prev_pose[0] + r * np.cos(shifted_Y)
                 shifted_y = self.prev_pose[1] + r * np.sin(shifted_Y)
                 
                 shifted = np.array([shifted_x, shifted_y, shifted_Y])
+                
+                def plot_robot_pose(x, y, Y, color, label = None):
+                    plt.plot(x, y, "o", color = color)
+                    plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label)
+                    #plt.legend()    
+                    
+                plot_robot_pose(shifted_x, shifted_y, shifted_Y, 'cyan', 'shifted')
                
                 #dX = self.get_all_d(shifted)
                 #m = np.zeros(dX.shape[0])
@@ -147,12 +155,24 @@ class HF2D(llc.LandmarkLocalization):
                 #self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
                 
                 #print(dX.shape)
-                X = self.get_X()
+                X = self.get_X().T
                 
-                p = multivariate_normal.pdf(X.T, mean = shifted, cov = self.cov)
-                self.m_grid += p.reshape(self.m_grid.shape)
+                #p = multivariate_normal.pdf(X.T, mean = shifted, cov = self.cov)
                 
-                #self.m_grid += p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
+                dX = np.zeros(X.shape)
+                dX[:,:2] = X[:,:2] - shifted[:2]
+                dX[:,2] =  llc.substract_angles(X[:,2], shifted[2])                
+                
+                p = multivariate_normal.pdf(dX, mean = np.zeros(shifted.shape), cov = self.cov)
+                
+                
+                #p = p.reshape(self.m_grid.shape)
+                p = p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
+                
+                if self.params['calc_type'] == "ADDITION":                                                                                    
+                    self.m_grid += p
+                else:
+                    self.m_grid *= p
             
         self.s_grid = self.reset_grid()
     

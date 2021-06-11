@@ -76,6 +76,9 @@ class LandmarkLocalization(object):
     def plot(self):
         raise NotImplementedError('plot')        
     
+    def reset(self):
+        raise NotImplementedError('reset')        
+    
 def substract_angles(target, source):
     return np.arctan2(np.sin(target-source), np.cos(target-source))
 

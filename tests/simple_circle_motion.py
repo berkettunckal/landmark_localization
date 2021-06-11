@@ -30,9 +30,11 @@ def do_motion(test_params):
     # noisy
     motion_params = {}
     motion_params['dt'] = test_params['sim']['dt']
-    motion_params['wY'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
+    #motion_params['wY'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
+    motion_params['wY'] = np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
     motion_params['swY'] = test_params['robot']['sw']
-    motion_params['vx'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
+    #motion_params['vx'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
+    motion_params['vx'] = np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
     motion_params['svx'] = test_params['robot']['sv']
     
     return motion_params      
@@ -63,7 +65,7 @@ def plot_robot_pose(x, y, Y, color, label = None):
     plt.legend()    
 
 def plot_exp_base(figure, test_params, landmarks_params, landmarks, padding = 1):
-    figure.clf()
+    #figure.clf()
     plt.xlim(-test_params['field']['x_max'] - padding, test_params['field']['x_max'] + padding)
     plt.ylim(-test_params['field']['y_max'] - padding, test_params['field']['y_max'] + padding)
     ax = plt.gca()    
@@ -84,8 +86,8 @@ if __name__ == '__main__':
     test_params = {}
     
     test_params['sim'] = {}
-    test_params['sim']['dt'] = 0.5
-    test_params['sim']['measure_freq'] = 0
+    test_params['sim']['dt'] = 3
+    test_params['sim']['measure_freq'] = 10
     test_params['sim']['steps'] = 1000
     test_params['sim']['step'] = 0
     
@@ -159,6 +161,7 @@ if __name__ == '__main__':
     measure_freq_cnt = 0    
     field_figure = plt.figure()             
     while test_params['sim']['step'] < test_params['sim']['steps']:
+        field_figure.clf() # TODO: remove it
         test_params['sim']['step'] += 1
         
         # MOTION
