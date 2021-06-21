@@ -8,6 +8,7 @@ simple test, where robot moves through landmarks field with constant linear and 
 import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.ll_hf2d import HF2D
+from landmark_localization.ll_sdl2d import SDL2D
 from landmark_localization.ll_amcl2d import AMCL2D
 from landmark_localization.landmark_localization_core import substract_angles, plot_cov
 
@@ -86,7 +87,8 @@ if __name__ == '__main__':
     test_params = {}
     
     HIST = False
-    AMCL = True
+    AMCL = False
+    SDL = True
     
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
@@ -161,6 +163,19 @@ if __name__ == '__main__':
     amcl = AMCL2D(amcl_params)
     amcl_history = []
     
+    sdl_params = {}
+    sdl_params['dims'] = {}
+    sdl_params['dims']['x'] = {}
+    sdl_params['dims']['x']['min'] = -test_params['field']['x_max']
+    sdl_params['dims']['x']['max'] = test_params['field']['x_max']
+    sdl_params['dims']['y'] = {}
+    sdl_params['dims']['y']['min'] = -test_params['field']['y_max']
+    sdl_params['dims']['y']['max'] = test_params['field']['y_max']
+    sdl_params['dims']['Y'] = {}
+    sdl_params['dims']['Y']['min'] = -np.pi
+    sdl_params['dims']['Y']['max'] = np.pi
+    sdl = SDL2D(sdl_params)
+    
     measure_freq_cnt = 0    
     field_figure = plt.figure()             
     while test_params['sim']['step'] < test_params['sim']['steps']:
@@ -174,6 +189,8 @@ if __name__ == '__main__':
             hf.motion_update(motion_params)
         if AMCL:
             amcl.motion_update(motion_params)
+        if SDL:
+            sdl.motion_update(motion_params)
                 
         # MEASURE
         landmarks_params = []
@@ -183,6 +200,8 @@ if __name__ == '__main__':
                 hf.landmarks_update(landmarks_params)
             if AMCL:
                 amcl.landmarks_update(landmarks_params)
+            if SDL:
+                sdl.landmarks_update(landmarks_params)
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
@@ -195,6 +214,8 @@ if __name__ == '__main__':
         if AMCL:
             amcl_pose = amcl.get_pose()        
             amcl_history.append(amcl_pose)
+        if SDL:
+            sdl.get_pose()
                 
         # PLOT STUFF
         plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
@@ -211,6 +232,9 @@ if __name__ == '__main__':
             plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
             plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
             plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+            
+        if SDL:
+            sdl.plot()
         
         plt.legend()
         plt.pause(0.1)

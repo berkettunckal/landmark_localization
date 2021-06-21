@@ -9,8 +9,13 @@ import landmark_localization.landmark_localization_core as llc
 import numpy as np
 from landmark_localization.sub_def_variable import sd_var
 from landmark_localization.sub_def_multi_interval import sd_mi
-from landmark_localization.sub_def_model import SDM, u_sqrt, u_atan2, u_tan, u_sin, u_cos, u_norm_angle, u_arcsin
-
+from landmark_localization.sub_def_model import SDM, u_sqrt, u_atan2, u_tan, u_sin, u_cos, u_norm_angle, u_arcsin, get_rov_monte_carlo_new
+from landmark_localization.ll_hf2d import HF2D
+from landmark_localization.ll_amcl2d import AMCL2D
+from functools import partial
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import copy    
 
 # CONSTRANTS AND CORRECIONS FUNCTIONS
 
@@ -93,27 +98,37 @@ def bounded_landmarks_correctness_1(var, R, xo, yo):
 
 class SDL2D(llc.LandmarkLocalization):
     
-    def __init__(self, params = {}, ll_method):
+    def __init__(self, params = {}):
         
         super(SDL2D, self).__init__()
         
-        if 'var_acc' not in params:
+        if not 'var_acc' in params:
             params['var_acc'] = 3
-        if 'stop_acc' not in params:
+        if not 'stop_acc' in params:
             params['stop_acc'] = 0.01
-        if 'verbose' not in params:
+        if not 'verbose' in params:
             params['verbose'] = True
-        if 'max_steps' not in params:
+        if not 'max_steps' in params:
             params['max_steps'] = 100
-        if 'max_mc_rolls' not in params:
+        if not 'max_mc_rolls' in params:
             params['max_mc_rolls'] = 64
-        if 'use_correctness_check' not in params:
+        if not 'use_correctness_check' in params:
             params['use_correctness_check'] = True
-            
-        self.params = params
         
         # probabilistic method works in pair with SDL
-        self.ll_method == ll_method
+        if not 'inner_method' in params or not 'inner_method_params' in params:
+            print('SDL error: inner_method or its params are not specified')
+            self.ll_method = llc.LandmarkLocalization
+        elif params['inner_method'] == 'hf':
+            self.ll_method = HF2D(params['inner_method_params'])
+        elif params['inner_method'] == 'amcl':
+            self.ll_method = AMCL2D(params['inner_method_params'])
+        else:
+            print('SDL error: unknown inner_method {}'.format(params['inner_method']))
+            self.ll_method = llc.LandmarkLocalization
+            
+        self.params = params                
+        
         # SDM
         self.model = SDM(var_acc = self.params['var_acc'],
                          stop_acc = self.params['stop_acc'],
@@ -122,35 +137,119 @@ class SDL2D(llc.LandmarkLocalization):
                          max_mc_rolls = self.params['max_mc_rolls'],
                          use_correctness_check = self.params['use_correctness_check'])
         
-        self.x_max = sd_mi([sd_var(self.params['dims']['x']['min']), sd_var(self.params['dims']['x']['max'])])
-        self.y_max = sd_mi([sd_var(self.params['dims']['y']['min']), sd_var(self.params['dims']['y']['max'])])
-        self.Y_max = sd_mi([sd_var(self.params['dims']['Y']['min']), sd_var(self.params['dims']['Y']['max'])])
+        self.x_max = sd_mi([sd_var(self.params['dims']['x']['min'], self.params['dims']['x']['max'])])
+        self.y_max = sd_mi([sd_var(self.params['dims']['y']['min'], self.params['dims']['y']['max'])])
+        self.Y_max = sd_mi([sd_var(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'])])
         
         self.model.register_variable('x', self.x_max)
         self.model.register_variable('y', self.y_max)
         self.model.register_variable('Y', self.Y_max, 'ANGLE')
         
+        self.current_motion_params = None
+
+    def sigma_to_sd_mi(self, sigma, mul = 4):
+        return sd_mi([sd_var(-sigma * mul, sigma * mul)])      
+        
+        
     def motion_update(self, motion_params):
-        # TODO super check params
-        #pass
-    
+        # TODO super check params                
+        self.current_motion_params = copy.deepcopy(motion_params)
+        
+        dY = motion_params['dt'] * (motion_params['wY'] + self.sigma_to_sd_mi(motion_params['swY']))
+        dR = motion_params['dt'] * (motion_params['vx'] + self.sigma_to_sd_mi(motion_params['svx']))
+        
+        self.model.variables['Y']['VALUE'] = self.Y_max.assign(self.model.variables['Y']['VALUE'] + dY)
+        
+        def dx(input_vars):
+            return input_vars[0] * u_cos(input_vars[1])
+        
+        def dy(input_vars):
+            return input_vars[0] * u_sin(input_vars[1])
+        
+        self.model.variables['x']['VALUE'] = self.model.variables['x']['VALUE'] + get_rov_monte_carlo_new(dx, [dR, self.model.variables['Y']['VALUE']])
+        self.model.variables['x']['VALUE'] =  self.x_max.assign(self.model.variables['x']['VALUE'])
+        
+        self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
+        self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])
+                        
+        #self.plot("blue")                                           
+        # clear notmain variables
+        to_del = []
+        for k, var in self.model.variables.items():
+            if k != 'x' and k!= 'y' and k!='Y':
+                to_del.append(k)
+        for key in to_del: del self.model.variables[key]
+        
+        # clear previous functions
+        self.model.constrants = {}
+        self.model.correctnesses = {}
+                    
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
-        pass
+        
+        for i, landmark_param in enumerate(landmarks_params):
+            if 'r' in landmark_param:
+                dr = self.sigma_to_sd_mi(landmark_param['sr'])
+                
+                self.model.register_constrant("l_r{}.1".format(i),
+                                              partial(landmark_r_constrant_1, R = landmark_param['r'], xo = landmark_param['x'], yo = landmark_param['y'], dr = dr),
+                                              'x', ['y'],
+                                              'ROV_MONTE_CARLO')
+                
+                self.model.register_constrant("l_r{}.2".format(i),
+                                              partial(landmark_r_constrant_2, R = landmark_param['r'], xo = landmark_param['x'], yo = landmark_param['y'], dr = dr),
+                                              'y', ['x'],
+                                              'ROV_MONTE_CARLO')
+                
+                if self.params['use_correctness_check']:
+                    self.model.register_correctness('l_r{}.1_c'.format(i),
+                                                    partial(landmark_r_correctness_1, R = landmark_param['r'], 
+                                                            xyo = landmark_param['x'],
+                                                            dr = dr),
+                                                    ['x'])
+                                                    
+                    self.model.register_correctness('l_r{}.2_c'.format(i),
+                                                    partial(landmark_r_correctness_1, R = landmark_param['r'], 
+                                                            xyo = landmark_param['y'],
+                                                            dr = dr),
+                                                    ['y'])                
     
-    def get_pose(self):        
+    def get_pose(self):                
+        self.model.proc_complex()
+        
+        # check correctness 
+        if self.params['use_correctness_check']:
+            for name_corr_func, _ in self.model.correctnesses.items():            
+                if not self.model.check_correctness_new(name_corr_func):
+                    self.model.variables['x']['VALUE'] = copy.deepcopy(self.x_max)
+                    self.model.variables['y']['VALUE'] = copy.deepcopy(self.y_max)
+                    self.model.variables['Y']['VALUE'] = copy.deepcopy(self.Y_max)
+                    print("\nInput variables was reseted!\n")
+                    break
         
         #self.ll_method.params['dims']['x'] = ...
         
-        self.ll_method.motion_update()
+        #self.ll_method.motion_update(self.current_motion_params)
         
-        return self.ll_method.get_pose()                
+        #return self.ll_method.get_pose()                
     
     def calc_cov(self, pose):
         self.ll_method.calc_cov()
         
     def get_cov(self):
         self.ll_method.get_cov()
+        
+    def plot(self, color = 'magenta'):
+        ax = plt.gca()
+        
+        for x in self.model.variables['x']['VALUE'].sd_vars:
+            cx = (x.high + x.low)/2
+            for y in self.model.variables['y']['VALUE'].sd_vars:
+                ax.add_patch(mpatches.Rectangle((x.low, y.low), x.high - x.low, y.high - y.low, ec=color, fill = False, ls='--'))
+                cy = (y.high + y.low)/2
+                for yaw in self.model.variables['Y']['VALUE'].sd_vars:                
+                    plt.plot([cx, cx + np.cos(yaw.low)], [cy, cy+np.sin(yaw.low)],color=color,ls="-")
+                    plt.plot([cx, cx + np.cos(yaw.high)], [cy, cy+np.sin(yaw.high)],color=color,ls="-")
         
         
 if __name__ == '__main__': 

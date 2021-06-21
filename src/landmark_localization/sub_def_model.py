@@ -142,7 +142,7 @@ class SDM(object):
             #print(el, self.correctnesses[name]['INPUT'][0])
             #print(self.variables[self.correctnesses[name]['INPUT'][0]])
             inp = [sd_mi([self.variables[self.correctnesses[name]['INPUT'][i]]['VALUE'][v]]) for i, v in enumerate(el)]
-            #print(inp)
+            #print('INPUT', inp)
             if self.correctnesses[name]['FUNC'](inp):
                 correct.append(el)
         #print(correct)
