@@ -43,7 +43,7 @@ G: *Y = atan[ (yo - *y) / (xo - *x) ] - a - *da
 '''
 # g1: G
 def landmark_a_constrant_1(var, xo, yo, a, da):
-    return u_atan2((yo - var[1]),(xo - var[0])) - da - a
+    return u_atan2((var[1] - yo),(var[0] - xo)) - da - a
 # g2: *y = tan(*Y + *da + a) * (*x - xo) + yo        
 def landmark_a_constrant_2(var, xo, yo, a, da):
     return yo - u_tan(var[1] + da + a) * (xo - var[0])
@@ -170,9 +170,9 @@ class SDL2D(llc.LandmarkLocalization):
         self.model.variables['x']['VALUE'] =  self.x_max.assign(self.model.variables['x']['VALUE'])
         
         self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
-        self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])
-                        
+        self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])                        
         #self.plot("blue")                                           
+        
         # clear notmain variables
         to_del = []
         for k, var in self.model.variables.items():
@@ -212,7 +212,22 @@ class SDL2D(llc.LandmarkLocalization):
                                                     partial(landmark_r_correctness_1, R = landmark_param['r'], 
                                                             xyo = landmark_param['y'],
                                                             dr = dr),
-                                                    ['y'])                
+                                                    ['y'])   
+            if 'a' in landmark_param:
+                da = self.sigma_to_sd_mi(landmark_param['sa'])
+                
+                self.model.register_constrant('l_a{}.1'.format(i),
+                                        partial(landmark_a_constrant_1, xo = landmark_param['x'], 
+                                                yo = landmark_param['y'], a = landmark_param['a'], da = da),
+                                        'Y', ['x','y'])         
+                self.model.register_constrant('l_a{}.2'.format(i),
+                                        partial(landmark_a_constrant_2, xo = landmark_param['x'], 
+                                                yo = landmark_param['y'], a = landmark_param['a'], da = da),
+                                        'y', ['x','Y'], 'ROV_MONTE_CARLO')         
+                self.model.register_constrant('l_a{}.3'.format(i),
+                                        partial(landmark_a_constrant_3, xo = landmark_param['x'], 
+                                                yo = landmark_param['y'], a = landmark_param['a'], da = da),
+                                        'x', ['y','Y'], 'ROV_MONTE_CARLO') 
     
     def get_pose(self):                
         self.model.proc_complex()

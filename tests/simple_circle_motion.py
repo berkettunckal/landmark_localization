@@ -30,11 +30,9 @@ def do_motion(test_params):
     
     # noisy
     motion_params = {}
-    motion_params['dt'] = test_params['sim']['dt']
-    #motion_params['wY'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
+    motion_params['dt'] = test_params['sim']['dt']    
     motion_params['wY'] = np.random.normal(test_params['robot']['w'], test_params['robot']['sw'])
-    motion_params['swY'] = test_params['robot']['sw']
-    #motion_params['vx'] = test_params['sim']['dt'] * np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
+    motion_params['swY'] = test_params['robot']['sw']    
     motion_params['vx'] = np.random.normal(test_params['robot']['v'], test_params['robot']['sv'])
     motion_params['svx'] = test_params['robot']['sv']
     
