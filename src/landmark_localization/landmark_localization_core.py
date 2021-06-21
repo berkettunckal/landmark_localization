@@ -12,6 +12,7 @@ class LandmarkLocalization(object):
     
     def __init__(self):
         self.cov = None
+        self.weight = None
         
     '''
     motion_params - dict:
@@ -72,6 +73,9 @@ class LandmarkLocalization(object):
     
     def get_cov(self):
         return self.cov
+    
+    def get_weight(self):
+        return self.weight
     
     def plot(self):
         raise NotImplementedError('plot')        

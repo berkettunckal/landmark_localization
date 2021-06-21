@@ -11,6 +11,7 @@ from landmark_localization.ll_hf2d import HF2D
 from landmark_localization.ll_sdl2d import SDL2D
 from landmark_localization.ll_amcl2d import AMCL2D
 from landmark_localization.landmark_localization_core import substract_angles, plot_cov
+import copy
 
 def generate_landmarks(test_params):
     landmarks = []
@@ -84,7 +85,7 @@ if __name__ == '__main__':
     
     test_params = {}
     
-    HIST = False
+    HIST = True
     AMCL = False
     SDL = True
     
@@ -172,10 +173,14 @@ if __name__ == '__main__':
     sdl_params['dims']['Y'] = {}
     sdl_params['dims']['Y']['min'] = -np.pi
     sdl_params['dims']['Y']['max'] = np.pi
+    sdl_params['inner_method'] = 'hf'
+    sdl_params['inner_method_params'] = copy.deepcopy(hf_params)
     sdl = SDL2D(sdl_params)
+    sdl_history = []
     
     measure_freq_cnt = 0    
-    field_figure = plt.figure()             
+    field_figure = plt.figure()           
+    plt.pause(2)
     while test_params['sim']['step'] < test_params['sim']['steps']:
         field_figure.clf() # TODO: remove it
         test_params['sim']['step'] += 1
@@ -213,7 +218,8 @@ if __name__ == '__main__':
             amcl_pose = amcl.get_pose()        
             amcl_history.append(amcl_pose)
         if SDL:
-            sdl.get_pose()
+            sdl_pose = sdl.get_pose()
+            sdl_history.append(sdl_pose)
                 
         # PLOT STUFF
         plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
@@ -233,6 +239,9 @@ if __name__ == '__main__':
             
         if SDL:
             sdl.plot()
+            plot_robot_pose(sdl_pose[0], sdl_pose[1], sdl_pose[2], "magenta", "sdl+hf")                
+            plt.plot(np.array(sdl_history)[:,0], np.array(sdl_history)[:,1], '-m')        
+            #plot_cov(plt.gca(), sdl_pose, hf.get_cov(), color = 'g')
         
         plt.legend()
         plt.pause(0.1)

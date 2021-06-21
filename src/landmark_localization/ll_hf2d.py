@@ -35,12 +35,13 @@ class HF2D(llc.LandmarkLocalization):
             params['prev_step_weight'] = 0.5
         if not 'motion_update_type' in params or (params['motion_update_type'] != 'BLUR_SHIFT' and params['motion_update_type'] != 'PREV_COV'):
             params['motion_update_type'] = 'BLUR_SHIFT'
-        
-            
-        
+                            
         # TODO check other params
-        self.params = params
+        self.params = params 
         
+        self.reset()
+        
+    def reset(self):
         self.grid_size = tuple()
         for dim in self.params['dims'].values():        
             self.count_dim(dim)
@@ -61,12 +62,11 @@ class HF2D(llc.LandmarkLocalization):
                                     slice(self.params['dims']['y']['min'],                                
                                 self.params['dims']['y']['min'] + self.params['dims']['y']['res'] * (self.params['dims']['y']['size']),
                                 self.params['dims']['y']['res'])]
-                                                
-        self.cov = None
+                                                        
         self.prev_pose = None
         
     def get_linspace(self, dim):
-        return np.linspace(dim['min'], dim['max'], dim['size'])        
+        return np.linspace(dim['min'], dim['max'], dim['size'])                
         
     def reset_grid(self):
         #if self.params['calc_type'] == "ADDITION":            
@@ -237,8 +237,7 @@ class HF2D(llc.LandmarkLocalization):
         YY = np.tile(self.Y_ls, self.x_ls.shape[0] * self.y_ls.shape[0])
         X = np.vstack((xy, YY))        
         return X
-        
-    
+            
     def plot(self):
         plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)
         

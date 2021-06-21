@@ -120,7 +120,12 @@ class SDL2D(llc.LandmarkLocalization):
             print('SDL error: inner_method or its params are not specified')
             self.ll_method = llc.LandmarkLocalization
         elif params['inner_method'] == 'hf':
-            self.ll_method = HF2D(params['inner_method_params'])
+            #self.ll_method = HF2D(params['inner_method_params'])
+            self.inner_hfs = []
+            self.inner_hf_prev_pose = None
+            self.inner_hf_cov = None
+            self.inner_hf_poses = []
+            self.inner_hf_weights = []
         elif params['inner_method'] == 'amcl':
             self.ll_method = AMCL2D(params['inner_method_params'])
         else:
@@ -146,10 +151,10 @@ class SDL2D(llc.LandmarkLocalization):
         self.model.register_variable('Y', self.Y_max, 'ANGLE')
         
         self.current_motion_params = None
+        self.current_landmarks_params = []
 
     def sigma_to_sd_mi(self, sigma, mul = 4):
-        return sd_mi([sd_var(-sigma * mul, sigma * mul)])      
-        
+        return sd_mi([sd_var(-sigma * mul, sigma * mul)])              
         
     def motion_update(self, motion_params):
         # TODO super check params                
@@ -158,7 +163,7 @@ class SDL2D(llc.LandmarkLocalization):
         dY = motion_params['dt'] * (motion_params['wY'] + self.sigma_to_sd_mi(motion_params['swY']))
         dR = motion_params['dt'] * (motion_params['vx'] + self.sigma_to_sd_mi(motion_params['svx']))
         
-        self.model.variables['Y']['VALUE'] = self.Y_max.assign(self.model.variables['Y']['VALUE'] + dY)
+        self.model.variables['Y']['VALUE'] = self.Y_max.assign((self.model.variables['Y']['VALUE'] + dY).norm_angle())
         
         def dx(input_vars):
             return input_vars[0] * u_cos(input_vars[1])
@@ -171,7 +176,7 @@ class SDL2D(llc.LandmarkLocalization):
         
         self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
         self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])                        
-        #self.plot("blue")                                           
+        self.plot("blue")                                           
         
         # clear notmain variables
         to_del = []
@@ -186,6 +191,8 @@ class SDL2D(llc.LandmarkLocalization):
                     
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
+        
+        self.current_landmarks_params = copy.deepcopy(landmarks_params)
         
         for i, landmark_param in enumerate(landmarks_params):
             if 'r' in landmark_param:
@@ -230,11 +237,10 @@ class SDL2D(llc.LandmarkLocalization):
                                         'x', ['y','Y'], 'ROV_MONTE_CARLO') 
     
     def get_pose(self):                
-        self.model.proc_complex()
-        
         # check correctness 
+        # TODO instead of this, get product and remove elements that not correct
         if self.params['use_correctness_check']:
-            for name_corr_func, _ in self.model.correctnesses.items():            
+            for name_corr_func in self.model.correctnesses.keys():            
                 if not self.model.check_correctness_new(name_corr_func):
                     self.model.variables['x']['VALUE'] = copy.deepcopy(self.x_max)
                     self.model.variables['y']['VALUE'] = copy.deepcopy(self.y_max)
@@ -242,11 +248,42 @@ class SDL2D(llc.LandmarkLocalization):
                     print("\nInput variables was reseted!\n")
                     break
         
+        self.model.proc_complex()                
+        
+        if self.params['inner_method'] == 'hf':
+            self.inner_hfs = []
+            self.inner_hf_poses = []
+            self.inner_hf_weights = []
+            
+            for x in self.model.variables['x']['VALUE']:
+                for y in self.model.variables['y']['VALUE']:
+                    for Y in self.model.variables['Y']['VALUE']:
+                        hf_params = copy.deepcopy(self.params['inner_method_params'])
+                        hf_params['dims']['x']['min'] = x.low
+                        hf_params['dims']['x']['max'] = x.high
+                        hf_params['dims']['y']['min'] = y.low
+                        hf_params['dims']['y']['max'] = y.high
+                        hf_params['dims']['Y']['min'] = Y.low
+                        hf_params['dims']['Y']['max'] = Y.high
+                        
+                        hf = HF2D(hf_params)
+                        hf.prev_pose = self.inner_hf_prev_pose
+                        hf.cov = self.inner_hf_cov
+                        hf.motion_update(self.current_motion_params)
+                        hf.landmarks_update(self.current_landmarks_params)
+                        self.inner_hf_poses.append(hf.get_pose())
+                        self.inner_hf_weights.append(hf.get_weight())                        
+                        self.inner_hfs.append(hf)
+                        
+            pose = self.inner_hf_poses[self.inner_hf_weights.index(max(self.inner_hf_weights))]
+                        
+        self.current_landmarks_params = []
+            
         #self.ll_method.params['dims']['x'] = ...
         
         #self.ll_method.motion_update(self.current_motion_params)
         
-        #return self.ll_method.get_pose()                
+        return pose
     
     def calc_cov(self, pose):
         self.ll_method.calc_cov()
@@ -257,14 +294,18 @@ class SDL2D(llc.LandmarkLocalization):
     def plot(self, color = 'magenta'):
         ax = plt.gca()
         
-        for x in self.model.variables['x']['VALUE'].sd_vars:
+        for x in self.model.variables['x']['VALUE']:
             cx = (x.high + x.low)/2
-            for y in self.model.variables['y']['VALUE'].sd_vars:
+            for y in self.model.variables['y']['VALUE']:
                 ax.add_patch(mpatches.Rectangle((x.low, y.low), x.high - x.low, y.high - y.low, ec=color, fill = False, ls='--'))
                 cy = (y.high + y.low)/2
-                for yaw in self.model.variables['Y']['VALUE'].sd_vars:                
+                for yaw in self.model.variables['Y']['VALUE']:                
                     plt.plot([cx, cx + np.cos(yaw.low)], [cy, cy+np.sin(yaw.low)],color=color,ls="-")
                     plt.plot([cx, cx + np.cos(yaw.high)], [cy, cy+np.sin(yaw.high)],color=color,ls="-")
+                    
+        if self.params['inner_method'] == 'hf':
+            for hf in self.inner_hfs:
+                hf.plot()
         
         
 if __name__ == '__main__': 
