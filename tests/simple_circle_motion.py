@@ -85,9 +85,12 @@ if __name__ == '__main__':
     
     test_params = {}
     
+    HIST = False
+    AMCL = True
+    
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
-    test_params['sim']['measure_freq'] = 10
+    test_params['sim']['measure_freq'] = 0
     test_params['sim']['steps'] = 1000
     test_params['sim']['step'] = 0
     
@@ -134,7 +137,7 @@ if __name__ == '__main__':
     hf_params['dims']['Y']['d_res'] = 0.15
     hf_params['calc_type'] = "ADDITION"
     hf_params['yaw_discount'] = 0.1
-    hf_params['prev_step_weight'] = 0.5   
+    hf_params['prev_step_weight'] = 0.999
     hf_params['motion_update_type'] = 'PREV_COV'
     hf = HF2D(hf_params)
     hf_history = []
@@ -167,39 +170,47 @@ if __name__ == '__main__':
         # MOTION
         motion_params = do_motion(test_params)
         real_history.append([test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y']])
-        hf.motion_update(motion_params)
-        #amcl.motion_update(motion_params)
+        if HIST:
+            hf.motion_update(motion_params)
+        if AMCL:
+            amcl.motion_update(motion_params)
                 
         # MEASURE
         landmarks_params = []
         if measure_freq_cnt == test_params['sim']['measure_freq'] or test_params['sim']['step'] == 1:            
             landmarks_params = do_measure(test_params, landmarks)
-            hf.landmarks_update(landmarks_params)
-            #amcl.landmarks_update(landmarks_params)
+            if HIST:
+                hf.landmarks_update(landmarks_params)
+            if AMCL:
+                amcl.landmarks_update(landmarks_params)
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
         
                         
         # GET POSES
-        hf_pose = hf.get_pose()
-        hf_history.append(hf_pose)
-        #amcl_pose = amcl.get_pose()        
-        #amcl_history.append(amcl_pose)
+        if HIST:
+            hf_pose = hf.get_pose()
+            hf_history.append(hf_pose)
+        if AMCL:
+            amcl_pose = amcl.get_pose()        
+            amcl_history.append(amcl_pose)
                 
         # PLOT STUFF
         plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
         plt.plot(np.array(real_history)[:,0], np.array(real_history)[:,1], '-r')
         
-        hf.plot()        
-        plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
-        plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
-        plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
+        if HIST:
+            hf.plot()        
+            plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
+            plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
+            plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
         
-        #amcl.plot()
-        #plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
-        #plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
-        #plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+        if AMCL:
+            amcl.plot()
+            plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
+            plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
+            plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
         
         plt.legend()
         plt.pause(0.1)

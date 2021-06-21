@@ -163,7 +163,12 @@ class AMCL2D(llc.LandmarkLocalization):
         self.w_avg = np.mean(self.W)
         # get NP particles from previous
         N = self.W.shape[0]
-        self.W /= np.sum(self.W)
+        sumW = np.sum(self.W)
+        if sumW == 0:
+            self.W = 1
+            return 
+        
+        self.W /= sumW
         indexes = np.random.choice(N, size = self.params['NP'], p = self.W)        
         self.P = self.P[indexes,:]
         
