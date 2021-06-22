@@ -199,6 +199,7 @@ class HF2D(llc.LandmarkLocalization):
         
     def get_pose(self):        
         self.merge_grids()
+        self.weight = np.max(self.m_grid)
         ipose = np.unravel_index(np.argmax(self.m_grid), self.m_grid.shape)        
         pose = []
         for i, p in enumerate(ipose):

@@ -65,7 +65,7 @@ def plot_robot_pose(x, y, Y, color, label = None):
     plt.legend()    
 
 def plot_exp_base(figure, test_params, landmarks_params, landmarks, padding = 1):
-    #figure.clf()
+    figure.clf()
     plt.xlim(-test_params['field']['x_max'] - padding, test_params['field']['x_max'] + padding)
     plt.ylim(-test_params['field']['y_max'] - padding, test_params['field']['y_max'] + padding)
     ax = plt.gca()    
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     
     test_params = {}
     
-    HIST = True
+    HIST = False
     AMCL = False
     SDL = True
     
@@ -208,8 +208,7 @@ if __name__ == '__main__':
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
-        
-                        
+                                
         # GET POSES
         if HIST:
             hf_pose = hf.get_pose()

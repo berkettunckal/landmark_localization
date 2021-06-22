@@ -272,11 +272,12 @@ class SDL2D(llc.LandmarkLocalization):
                         hf.motion_update(self.current_motion_params)
                         hf.landmarks_update(self.current_landmarks_params)
                         self.inner_hf_poses.append(hf.get_pose())
-                        self.inner_hf_weights.append(hf.get_weight())                        
+                        self.inner_hf_weights.append(hf.get_weight())                                                
                         self.inner_hfs.append(hf)
-                        
+            
+            print(self.inner_hf_poses, self.inner_hf_weights)
             pose = self.inner_hf_poses[self.inner_hf_weights.index(max(self.inner_hf_weights))]
-                        
+        
         self.current_landmarks_params = []
             
         #self.ll_method.params['dims']['x'] = ...
@@ -304,7 +305,7 @@ class SDL2D(llc.LandmarkLocalization):
                     plt.plot([cx, cx + np.cos(yaw.high)], [cy, cy+np.sin(yaw.high)],color=color,ls="-")
                     
         if self.params['inner_method'] == 'hf':
-            for hf in self.inner_hfs:
+            for hf in self.inner_hfs:                
                 hf.plot()
         
         
