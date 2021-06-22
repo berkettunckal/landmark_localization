@@ -275,8 +275,7 @@ class SDL2D(llc.LandmarkLocalization):
                         self.inner_hf_poses.append(hf.get_pose())
                         self.inner_hf_weights.append(hf.get_weight())                                                
                         self.inner_hfs.append(hf)
-            
-            print(self.inner_hf_poses, self.inner_hf_weights)
+                        
             pose = self.inner_hf_poses[self.inner_hf_weights.index(max(self.inner_hf_weights))]
             
         elif self.params['inner_method'] == 'amcl':                    

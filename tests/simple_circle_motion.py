@@ -85,10 +85,10 @@ if __name__ == '__main__':
     
     test_params = {}
     
-    HIST = False
-    AMCL = False
-    SDL_HF = False
-    SDL_AMCL = True
+    HIST = 0
+    AMCL = 0
+    SDL_HF = 0
+    SDL_AMCL = 1
     
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
@@ -141,6 +141,7 @@ if __name__ == '__main__':
     hf_params['yaw_discount'] = 0.1
     hf_params['prev_step_weight'] = 0.999
     hf_params['motion_update_type'] = 'PREV_COV'
+    hf_params['pose_calc_type'] = 'MAX'
     hf = HF2D(hf_params)
     hf_history = []
     
@@ -177,6 +178,7 @@ if __name__ == '__main__':
     sdl_hf_params['dims']['Y']['max'] = np.pi
     sdl_hf_params['inner_method'] = 'hf'
     sdl_hf_params['inner_method_params'] = copy.deepcopy(hf_params)    
+    sdl_hf_params['inner_method_params']['pose_calc_type'] = 'SUM'
     sdl_hf = SDL2D(sdl_hf_params)
     sdl_hf_history = []
     
@@ -199,7 +201,7 @@ if __name__ == '__main__':
     
     measure_freq_cnt = 0    
     field_figure = plt.figure()           
-    #plt.pause(2)
+    plt.pause(2)
     while test_params['sim']['step'] < test_params['sim']['steps']:
         #field_figure.clf() # TODO: remove it
         test_params['sim']['step'] += 1

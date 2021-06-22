@@ -23,6 +23,9 @@ class HF2D(llc.LandmarkLocalization):
         calc_type: "ADDITION" (def) or "MULTIPLICATION"
         yaw_discount: 1 (def)
         prev_step_weight: 0.5 (def)
+        motion_update_type: BLUR_SHIFT (def) | PREV_COV
+        pose_calc_type: MAX (def) | SUM
+        
     '''
     def __init__(self, params = {}):
         super(HF2D, self).__init__()        
@@ -35,6 +38,8 @@ class HF2D(llc.LandmarkLocalization):
             params['prev_step_weight'] = 0.5
         if not 'motion_update_type' in params or (params['motion_update_type'] != 'BLUR_SHIFT' and params['motion_update_type'] != 'PREV_COV'):
             params['motion_update_type'] = 'BLUR_SHIFT'
+        if not 'pose_calc_type' in params:
+            params['pose_calc_type'] = 'MAX'
                             
         # TODO check other params
         self.params = params 
@@ -158,7 +163,9 @@ class HF2D(llc.LandmarkLocalization):
     # NOTE that function could be more vectorized
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
-                
+        if len(landmarks_params) == 0:
+            return
+            
         for landmark_param in landmarks_params:            
             x = self.xx_mg - landmark_param['x']
             y = self.yy_mg - landmark_param['y']
@@ -200,10 +207,21 @@ class HF2D(llc.LandmarkLocalization):
     def get_pose(self):        
         self.merge_grids()
         self.weight = np.max(self.m_grid)
-        ipose = np.unravel_index(np.argmax(self.m_grid), self.m_grid.shape)        
-        pose = []
-        for i, p in enumerate(ipose):
-            pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)                        
+        if self.params['pose_calc_type'] == 'MAX':            
+            ipose = np.unravel_index(np.argmax(self.m_grid), self.m_grid.shape)        
+            pose = []
+            for i, p in enumerate(ipose):
+                pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)
+        elif self.params['pose_calc_type'] == 'SUM':
+            X = self.get_X()
+            #print(X.shape)
+            w = np.swapaxes(self.m_grid, 0, 1)
+            w = w.flatten()
+            w = w / np.sum(w)        
+            pose = [np.sum(X[0,:] * w),
+                    np.sum(X[1,:] * w),
+                    np.sum(X[2,:] * w)]
+            
         self.cov = self.calc_cov(pose)
         self.prev_pose = pose
         return pose
