@@ -127,7 +127,8 @@ class SDL2D(llc.LandmarkLocalization):
             self.inner_hf_poses = []
             self.inner_hf_weights = []
         elif params['inner_method'] == 'amcl':
-            self.ll_method = AMCL2D(params['inner_method_params'])
+            #self.ll_method = AMCL2D(params['inner_method_params'])
+            self.inner_amcl = None
         else:
             print('SDL error: unknown inner_method {}'.format(params['inner_method']))
             self.ll_method = llc.LandmarkLocalization
@@ -176,7 +177,7 @@ class SDL2D(llc.LandmarkLocalization):
         
         self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
         self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])                        
-        self.plot("blue")                                           
+        #self.plot("blue")                                           
         
         # clear notmain variables
         to_del = []
@@ -236,7 +237,7 @@ class SDL2D(llc.LandmarkLocalization):
                                                 yo = landmark_param['y'], a = landmark_param['a'], da = da),
                                         'x', ['y','Y'], 'ROV_MONTE_CARLO') 
     
-    def get_pose(self):                
+    def get_pose(self):                       
         # check correctness 
         # TODO instead of this, get product and remove elements that not correct
         if self.params['use_correctness_check']:
@@ -277,20 +278,50 @@ class SDL2D(llc.LandmarkLocalization):
             
             print(self.inner_hf_poses, self.inner_hf_weights)
             pose = self.inner_hf_poses[self.inner_hf_weights.index(max(self.inner_hf_weights))]
-        
-        self.current_landmarks_params = []
             
-        #self.ll_method.params['dims']['x'] = ...
-        
-        #self.ll_method.motion_update(self.current_motion_params)
-        
+        elif self.params['inner_method'] == 'amcl':                    
+            # we got real multi interval here
+            if len(self.model.variables['Y']) > 1 or len(self.model.variables['x']) > 1 or len(self.model.variables['y']) > 1:
+                mi_param = {}
+                for ax in ['x', 'y', 'Y']:
+                    mi_param[ax] = self.model.variables[ax]['VALUE'].to_list('list')                
+                    
+                self.params['inner_method_params']['multi_interval_constrans'] = mi_param
+            # just one
+            else:
+                if 'multi_interval_constrans' in self.params['inner_method_params']:
+                    del self.params['inner_method_params']['multi_interval_constrans']
+                for ax in ['x', 'y', 'Y']:
+                    self.params['inner_method_params']['dims'][ax]['min'] = self.model.variables[ax]['VALUE'][0].low
+                    self.params['inner_method_params']['dims'][ax]['min'] = self.model.variables[ax]['VALUE'][0].low
+                        
+            if self.inner_amcl is None:
+                self.inner_amcl = AMCL2D(self.params['inner_method_params'])
+            else:
+                self.inner_amcl.params = self.params['inner_method_params']
+            
+            self.inner_amcl.motion_update(self.current_motion_params)
+            self.inner_amcl.landmarks_update(self.current_landmarks_params)
+            pose = self.inner_amcl.get_pose()  
+                    
+        self.current_landmarks_params = []
+                    
         return pose
     
     def calc_cov(self, pose):
-        self.ll_method.calc_cov()
-        
+        if self.params['inner_method'] == 'amcl':
+            self.inner_amcl.calc_cov()
+        else:
+            pass
+            #self.inner_hf_cov = 0
+            #for hf in self.inner_hfs:
+                #self.inner_hf_cov += hf.get_cov()
+                
     def get_cov(self):
-        self.ll_method.get_cov()
+        if self.params['inner_method'] == 'amcl':
+            self.inner_amcl.get_cov()
+        else:
+            return self.inner_hf_cov
         
     def plot(self, color = 'magenta'):
         ax = plt.gca()
@@ -307,6 +338,10 @@ class SDL2D(llc.LandmarkLocalization):
         if self.params['inner_method'] == 'hf':
             for hf in self.inner_hfs:                
                 hf.plot()
+        
+        if self.params['inner_method'] == 'amcl':
+            self.inner_amcl.plot()
+            
         
         
 if __name__ == '__main__': 

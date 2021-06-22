@@ -20,6 +20,10 @@ class AMCL2D(llc.LandmarkLocalization):
         NP(particles amount): 100 (def)
         calc_type: "ADDITION" (def) or "MULTIPLICATION"
         alpha: [1,1,1,1,1,1]
+        multi_interval_constrans:
+            x: [[low1, high1], [low2, high2], ...]
+            y: ...
+            Y: ...
     '''
     def __init__(self, params = {}):
         super(AMCL2D, self).__init__()
@@ -47,14 +51,52 @@ class AMCL2D(llc.LandmarkLocalization):
         
     def init_pf(self):
         size = (self.params['NP'],1)
-        self.P = np.hstack(self.get_random_pose(size))
+        #self.P = np.hstack(self.get_random_pose(size))
+        self.P = self.get_random_pose(size)
+        print(self.P.shape)
         self.init_weight()
         self.w_avg = 0
         self.w_slow = 0
         self.w_fast = 0
         
     def get_random_pose(self, size):
-        return (np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size))
+        if 'multi_interval_constrans' in self.params:
+            if type(size) is int:
+                s = size
+            if type(size) is tuple:
+                s = size[0]
+            
+            return np.vstack((self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['x'], s),
+                    self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['y'], s),
+                    self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['Y'], s))).T
+        else:
+            return np.hstack((np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size)))
+        
+    '''
+    multi_interval (list of list): [[low1, high1], [low2, high2], ...]
+    !!! high_i < low_i+1
+    '''
+    def get_random_value_from_multi_interval(self, multi_interval, size = 1):
+        lists_i = [i for i in range(len(multi_interval))]
+        lists_w = np.array([l[1] - l[0] for l in multi_interval])
+        lists_w = lists_w / np.sum(lists_w)
+        if size == 1:
+            i = np.random.choice(lists_i, p = lists_w)
+            v = np.random.uniform(multi_interval[i][0], multi_interval[i][1])
+            return v
+        else:
+            output = []
+            for _ in range(size):
+                i = np.random.choice(lists_i, p = lists_w)
+                v = np.random.uniform(multi_interval[i][0], multi_interval[i][1])
+                output.append(v)
+            return output              
+        
+    def bel_multi_interval(self, value, multi_interval):
+        for interval in multi_interval:
+            if value <= interval[1] and value >= interval[0]:
+                return True
+        return False        
         
     def init_weight(self):
         if self.params['calc_type'] == 'ADDITION':            
@@ -86,8 +128,14 @@ class AMCL2D(llc.LandmarkLocalization):
         self.init_weight()
         
     def check_borders(self):
-        for i, ax in enumerate(['x', 'y', 'Y']):
-            self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i])                                            
+        if 'multi_interval_constrans' in self.params:
+            for j in range(self.P.shape[0]):
+                for i, ax in enumerate(['x', 'y', 'Y']):
+                    if not self.bel_multi_interval(self.P[j,i], self.params['multi_interval_constrans'][ax]):
+                        self.P[j,i] = self.get_random_value_from_multi_interval(self.params['multi_interval_constrans'][ax])
+        else:
+            for i, ax in enumerate(['x', 'y', 'Y']):
+                self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i])                                            
         
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
@@ -181,8 +229,10 @@ class AMCL2D(llc.LandmarkLocalization):
             if np.random.uniform(0,1) <= p:
                 Padd.append(self.get_random_pose(1))
         if len(Padd) > 0:
+            #print(Padd)
             Padd = np.array(Padd)            
-            self.P = np.vstack((self.P, Padd[:,:,0]))
+            #print(self.P.shape, Padd.shape)
+            self.P = np.vstack((self.P, Padd[:,0,:]))
                               
         #print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))            
         

@@ -87,7 +87,8 @@ if __name__ == '__main__':
     
     HIST = False
     AMCL = False
-    SDL = True
+    SDL_HF = False
+    SDL_AMCL = True
     
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
@@ -162,27 +163,45 @@ if __name__ == '__main__':
     amcl = AMCL2D(amcl_params)
     amcl_history = []
     
-    sdl_params = {}
-    sdl_params['dims'] = {}
-    sdl_params['dims']['x'] = {}
-    sdl_params['dims']['x']['min'] = -test_params['field']['x_max']
-    sdl_params['dims']['x']['max'] = test_params['field']['x_max']
-    sdl_params['dims']['y'] = {}
-    sdl_params['dims']['y']['min'] = -test_params['field']['y_max']
-    sdl_params['dims']['y']['max'] = test_params['field']['y_max']
-    sdl_params['dims']['Y'] = {}
-    sdl_params['dims']['Y']['min'] = -np.pi
-    sdl_params['dims']['Y']['max'] = np.pi
-    sdl_params['inner_method'] = 'hf'
-    sdl_params['inner_method_params'] = copy.deepcopy(hf_params)
-    sdl = SDL2D(sdl_params)
-    sdl_history = []
+    sdl_hf_params = {}
+    sdl_hf_params['verbose'] = False
+    sdl_hf_params['dims'] = {}
+    sdl_hf_params['dims']['x'] = {}
+    sdl_hf_params['dims']['x']['min'] = -test_params['field']['x_max']
+    sdl_hf_params['dims']['x']['max'] = test_params['field']['x_max']
+    sdl_hf_params['dims']['y'] = {}
+    sdl_hf_params['dims']['y']['min'] = -test_params['field']['y_max']
+    sdl_hf_params['dims']['y']['max'] = test_params['field']['y_max']
+    sdl_hf_params['dims']['Y'] = {}
+    sdl_hf_params['dims']['Y']['min'] = -np.pi
+    sdl_hf_params['dims']['Y']['max'] = np.pi
+    sdl_hf_params['inner_method'] = 'hf'
+    sdl_hf_params['inner_method_params'] = copy.deepcopy(hf_params)    
+    sdl_hf = SDL2D(sdl_hf_params)
+    sdl_hf_history = []
+    
+    sdl_amcl_params = {}
+    sdl_amcl_params['verbose'] = False
+    sdl_amcl_params['dims'] = {}
+    sdl_amcl_params['dims']['x'] = {}
+    sdl_amcl_params['dims']['x']['min'] = -test_params['field']['x_max']
+    sdl_amcl_params['dims']['x']['max'] = test_params['field']['x_max']
+    sdl_amcl_params['dims']['y'] = {}
+    sdl_amcl_params['dims']['y']['min'] = -test_params['field']['y_max']
+    sdl_amcl_params['dims']['y']['max'] = test_params['field']['y_max']
+    sdl_amcl_params['dims']['Y'] = {}
+    sdl_amcl_params['dims']['Y']['min'] = -np.pi
+    sdl_amcl_params['dims']['Y']['max'] = np.pi    
+    sdl_amcl_params['inner_method'] = 'amcl'
+    sdl_amcl_params['inner_method_params'] = copy.deepcopy(amcl_params)
+    sdl_amcl = SDL2D(sdl_amcl_params)
+    sdl_amcl_history = []
     
     measure_freq_cnt = 0    
     field_figure = plt.figure()           
-    plt.pause(2)
+    #plt.pause(2)
     while test_params['sim']['step'] < test_params['sim']['steps']:
-        field_figure.clf() # TODO: remove it
+        #field_figure.clf() # TODO: remove it
         test_params['sim']['step'] += 1
         
         # MOTION
@@ -192,8 +211,10 @@ if __name__ == '__main__':
             hf.motion_update(motion_params)
         if AMCL:
             amcl.motion_update(motion_params)
-        if SDL:
-            sdl.motion_update(motion_params)
+        if SDL_HF:
+            sdl_hf.motion_update(motion_params)
+        if SDL_AMCL:
+            sdl_amcl.motion_update(motion_params)
                 
         # MEASURE
         landmarks_params = []
@@ -203,8 +224,10 @@ if __name__ == '__main__':
                 hf.landmarks_update(landmarks_params)
             if AMCL:
                 amcl.landmarks_update(landmarks_params)
-            if SDL:
-                sdl.landmarks_update(landmarks_params)
+            if SDL_HF:
+                sdl_hf.landmarks_update(landmarks_params)
+            if SDL_AMCL:
+                sdl_amcl.landmarks_update(landmarks_params)
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
@@ -216,9 +239,12 @@ if __name__ == '__main__':
         if AMCL:
             amcl_pose = amcl.get_pose()        
             amcl_history.append(amcl_pose)
-        if SDL:
-            sdl_pose = sdl.get_pose()
-            sdl_history.append(sdl_pose)
+        if SDL_HF:
+            sdl_hf_pose = sdl_hf.get_pose()
+            sdl_hf_history.append(sdl_hf_pose)
+        if SDL_AMCL:
+            sdl_amcl_pose = sdl_amcl.get_pose()
+            sdl_amcl_history.append(sdl_amcl_pose)
                 
         # PLOT STUFF
         plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
@@ -236,11 +262,17 @@ if __name__ == '__main__':
             plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
             plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
             
-        if SDL:
-            sdl.plot()
-            plot_robot_pose(sdl_pose[0], sdl_pose[1], sdl_pose[2], "magenta", "sdl+hf")                
-            plt.plot(np.array(sdl_history)[:,0], np.array(sdl_history)[:,1], '-m')        
+        if SDL_HF:
+            sdl_hf.plot()
+            plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
+            plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
             #plot_cov(plt.gca(), sdl_pose, hf.get_cov(), color = 'g')
+            
+        if SDL_AMCL:
+            sdl_amcl.plot()
+            plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
+            plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
+            #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
         
         plt.legend()
         plt.pause(0.1)

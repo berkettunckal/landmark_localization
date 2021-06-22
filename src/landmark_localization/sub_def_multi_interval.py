@@ -19,10 +19,13 @@ class sd_mi(object):
         self.normilized = True
         self.i = 0
         
-    def to_list(self):
+    def to_list(self, sd_var = 'dict'):
         l = []
         for sdv in self.sd_vars:
-            l.append(sdv.to_dict())
+            if sd_var == 'dict':
+                l.append(sdv.to_dict())
+            else:
+                l.append(sdv.to_list())
         return l
                 
     def __str__(self):

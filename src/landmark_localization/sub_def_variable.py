@@ -32,6 +32,8 @@ class sd_var(object):
         d['high'] = self.high    
         return d
             
+    def to_list(self):
+        return [self.low, self.high]
     
     def __str__(self):
         return "[{}, {}]".format(self.low, self.high)
