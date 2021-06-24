@@ -79,15 +79,32 @@ def plot_exp_base(figure, test_params, landmarks_params, landmarks, padding = 1)
     for landmark in landmarks:
         plt.plot(landmark['x'], landmark['y'], 'k.')
         
-    plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')            
+    plot_robot_pose(test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y'], 'red', 'real_pose')        
+    
+    
+def boxplot( data, ax, labels, color = 'r', rotation  = 0):
+    #means = np.mean(data, axis=1)
+    bp = ax.boxplot(data, sym='.'+color)
+    plt.setp(bp['medians'],color=color, linewidth=3)    
+    plt.xticks(range(1,1+len(data)), labels, rotation = rotation)    
+    
+def get_pose_errors(data, real):
+    d = np.array(data)
+    r = np.array(real)
+    dr = np.hypot(d[:,0] - r[:,0], d[:,1] - r[:,1])
+    #print(dr)
+    dr = dr[~np.isnan(dr)]
+    #print(dr)
+    return dr
+    
 
 if __name__ == '__main__':        
     
     test_params = {}
     
-    HIST = 0
-    AMCL = 0
-    SDL_HF = 0
+    HIST = 1
+    AMCL = 1
+    SDL_HF = 1
     SDL_AMCL = 1
     
     test_params['sim'] = {}
@@ -138,8 +155,9 @@ if __name__ == '__main__':
     hf_params['dims']['Y']['max'] = np.pi
     hf_params['dims']['Y']['d_res'] = 0.15
     hf_params['calc_type'] = "ADDITION"
+    #hf_params['calc_type'] = "MULTIPLICATION" # NOTE: not works well
     hf_params['yaw_discount'] = 0.1
-    hf_params['prev_step_weight'] = 0.999
+    hf_params['prev_step_weight'] = 0.5
     hf_params['motion_update_type'] = 'PREV_COV'
     hf_params['pose_calc_type'] = 'MAX'
     hf = HF2D(hf_params)
@@ -178,7 +196,7 @@ if __name__ == '__main__':
     sdl_hf_params['dims']['Y']['max'] = np.pi
     sdl_hf_params['inner_method'] = 'hf'
     sdl_hf_params['inner_method_params'] = copy.deepcopy(hf_params)    
-    sdl_hf_params['inner_method_params']['pose_calc_type'] = 'SUM'
+    #sdl_hf_params['inner_method_params']['pose_calc_type'] = 'SUM'
     sdl_hf = SDL2D(sdl_hf_params)
     sdl_hf_history = []
     
@@ -200,10 +218,11 @@ if __name__ == '__main__':
     sdl_amcl_history = []
     
     measure_freq_cnt = 0    
-    field_figure = plt.figure()           
-    plt.pause(2)
+    field_figure = plt.figure('field')           
+    #plt.pause(2)
     while test_params['sim']['step'] < test_params['sim']['steps']:
         #field_figure.clf() # TODO: remove it
+        plt.figure('field')
         test_params['sim']['step'] += 1
         
         # MOTION
@@ -268,7 +287,7 @@ if __name__ == '__main__':
             sdl_hf.plot()
             plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
             plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
-            #plot_cov(plt.gca(), sdl_pose, hf.get_cov(), color = 'g')
+            plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
             
         if SDL_AMCL:
             sdl_amcl.plot()
@@ -277,6 +296,27 @@ if __name__ == '__main__':
             #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
         
         plt.legend()
+        
+        plt.figure('boxplot')
+        plt.cla()
+        data = []
+        labels = []
+        if HIST:
+            data.append(get_pose_errors(hf_history, real_history))
+            labels.append('hf')
+        if AMCL:
+            data.append(get_pose_errors(amcl_history, real_history))
+            labels.append('amcl')
+        if SDL_HF:
+            data.append(get_pose_errors(sdl_hf_history, real_history))
+            labels.append('sdl+hf')
+        if SDL_AMCL:
+            data.append(get_pose_errors(sdl_amcl_history, real_history))
+            labels.append('sdl+amcl')        
+            
+        boxplot(data, plt.gca(), labels)
+        plt.grid()
+        
         plt.pause(0.1)
     
     

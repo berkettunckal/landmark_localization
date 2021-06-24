@@ -53,7 +53,7 @@ class AMCL2D(llc.LandmarkLocalization):
         size = (self.params['NP'],1)
         #self.P = np.hstack(self.get_random_pose(size))
         self.P = self.get_random_pose(size)
-        print(self.P.shape)
+        #print(self.P.shape)
         self.init_weight()
         self.w_avg = 0
         self.w_slow = 0
@@ -66,11 +66,17 @@ class AMCL2D(llc.LandmarkLocalization):
             if type(size) is tuple:
                 s = size[0]
             
-            return np.vstack((self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['x'], s),
+            res= np.vstack((self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['x'], s),
                     self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['y'], s),
                     self.get_random_value_from_multi_interval(self.params['multi_interval_constrans']['Y'], s))).T
+            #print('mic', res.shape)
+            if type(size) is int: # NOTE: kostylish
+                return res[0,:]
+            return res#[:,0,:]
         else:
-            return np.hstack((np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size)))
+            res =  np.hstack((np.random.uniform(self.params['dims']['x']['min'], self.params['dims']['x']['max'],size),np.random.uniform(self.params['dims']['y']['min'], self.params['dims']['y']['max'],size),np.random.uniform(self.params['dims']['Y']['min'], self.params['dims']['Y']['max'],size)))
+            #print('dims', res.shape)
+            return res
         
     '''
     multi_interval (list of list): [[low1, high1], [low2, high2], ...]
@@ -231,8 +237,8 @@ class AMCL2D(llc.LandmarkLocalization):
         if len(Padd) > 0:
             #print(Padd)
             Padd = np.array(Padd)            
-            #print(self.P.shape, Padd.shape)
-            self.P = np.vstack((self.P, Padd[:,0,:]))
+            #print(self.P.shape, Padd.shape, 'multi_interval_constrans' in self.params)
+            self.P = np.vstack((self.P, Padd))
                               
         #print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))            
         

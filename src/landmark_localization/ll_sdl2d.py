@@ -276,7 +276,10 @@ class SDL2D(llc.LandmarkLocalization):
                         self.inner_hf_weights.append(hf.get_weight())                                                
                         self.inner_hfs.append(hf)
                         
-            pose = self.inner_hf_poses[self.inner_hf_weights.index(max(self.inner_hf_weights))]
+            best_hf_index = self.inner_hf_weights.index(max(self.inner_hf_weights))
+            pose = self.inner_hf_poses[best_hf_index]
+            self.inner_hf_prev_pose = pose
+            self.inner_hf_cov = self.inner_hfs[best_hf_index].get_cov()
             
         elif self.params['inner_method'] == 'amcl':                    
             # we got real multi interval here
@@ -309,7 +312,8 @@ class SDL2D(llc.LandmarkLocalization):
     
     def calc_cov(self, pose):
         if self.params['inner_method'] == 'amcl':
-            self.inner_amcl.calc_cov()
+            #self.inner_amcl.calc_cov()
+            pass
         else:
             pass
             #self.inner_hf_cov = 0

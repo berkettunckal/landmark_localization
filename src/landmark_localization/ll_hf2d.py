@@ -87,6 +87,8 @@ class HF2D(llc.LandmarkLocalization):
         if dim_len > 0:
             dim['size'] = int(np.ceil(dim_len / dim['d_res']))
             dim['res'] = dim_len / dim['size']
+            dim['max']  += dim['res']
+            dim['size'] += 1
         else:
             dim['min_len'] -= dim['d_res']/2
             dim['max_len'] += dim['d_res']/2
@@ -149,7 +151,8 @@ class HF2D(llc.LandmarkLocalization):
                 dX[:,:2] = X[:,:2] - shifted[:2]
                 dX[:,2] =  llc.substract_angles(X[:,2], shifted[2])                
                 
-                p = multivariate_normal.pdf(dX, mean = np.zeros(shifted.shape), cov = self.cov)
+                #print(self.cov)
+                p = multivariate_normal.pdf(dX, mean = np.zeros(shifted.shape), cov = self.cov, allow_singular = True)
                 
                 p = p.reshape((self.m_grid.shape[1], self.m_grid.shape[0], self.m_grid.shape[2])).swapaxes(0,1)
                 
@@ -200,9 +203,13 @@ class HF2D(llc.LandmarkLocalization):
                     
     def merge_grids(self):
         if self.params['calc_type'] == "ADDITION":                                        
+            self.m_grid = self.m_grid / np.sum(self.m_grid)
+            self.s_grid = self.s_grid / np.sum(self.s_grid)
             self.m_grid = self.m_grid * self.params['prev_step_weight'] + self.s_grid * (1 - self.params['prev_step_weight'])
         else:
-            self.m_grid = self.m_grid * self.s_grid
+            self.m_grid = self.m_grid / np.sum(self.m_grid)
+            self.s_grid = self.s_grid / np.sum(self.s_grid)
+            self.m_grid = self.m_grid * self.s_grid# NOTE: prev weight has no sense?
         
     def get_pose(self):        
         self.merge_grids()
@@ -213,8 +220,7 @@ class HF2D(llc.LandmarkLocalization):
             for i, p in enumerate(ipose):
                 pose.append(list(self.params['dims'].values())[i]['min'] + list(self.params['dims'].values())[i]['res'] * p)
         elif self.params['pose_calc_type'] == 'SUM':
-            X = self.get_X()
-            #print(X.shape)
+            X = self.get_X()            
             w = np.swapaxes(self.m_grid, 0, 1)
             w = w.flatten()
             w = w / np.sum(w)        
@@ -229,24 +235,18 @@ class HF2D(llc.LandmarkLocalization):
     def calc_cov(self, pose):
         w = np.swapaxes(self.m_grid, 0, 1)
         w = w.flatten()
-        w = w / np.sum(w)        
-        
-        dX = self.get_all_d(pose)
-                
+        w = w / np.sum(w)                
+        dX = self.get_all_d(pose)                
         return np.dot( dX * w , dX.T)
     
     def get_all_d(self, pose):
         dx = self.xx_mg - pose[0]
         dy = self.yy_mg - pose[1]        
-        dY = llc.substract_angles(self.Y_ls, pose[2])
-        
+        dY = llc.substract_angles(self.Y_ls, pose[2])        
         dxy = np.array(( dx.flatten(), dy.flatten() ))
-        dxy = np.repeat(dxy, self.params['dims']['Y']['size'], axis = 1)
-        
-        dYY = np.tile(dY, self.x_ls.shape[0] * self.y_ls.shape[0])
-                
-        dX = np.vstack((dxy, dYY))        
-        #print(dxy.shape, dY.shape, dYY.shape, self.m_grid.shape, dX.shape)                                
+        dxy = np.repeat(dxy, self.params['dims']['Y']['size'], axis = 1)        
+        dYY = np.tile(dY, self.x_ls.shape[0] * self.y_ls.shape[0])                
+        dX = np.vstack((dxy, dYY))                
         return dX
     
     def get_X(self):
