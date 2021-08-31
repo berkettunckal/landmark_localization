@@ -258,6 +258,8 @@ class HF2D(llc.LandmarkLocalization):
         return X
             
     def plot(self):
+        #plt.rcParams['pcolor.shading'] ='nearest'
+        
         plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)
         
 if __name__ == '__main__': 

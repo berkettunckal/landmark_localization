@@ -296,6 +296,8 @@ if __name__ == '__main__':
             #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
         
         plt.legend()
+        plt.grid()
+        plt.pause(0.01)
         
         plt.figure('boxplot')
         plt.cla()
@@ -313,11 +315,21 @@ if __name__ == '__main__':
         if SDL_AMCL:
             data.append(get_pose_errors(sdl_amcl_history, real_history))
             labels.append('sdl+amcl')        
-            
-        boxplot(data, plt.gca(), labels)
+
+        data_labels = list(zip(data, labels))
+        
+        #data_labels = [d for d in sorted(data_labels, key=lambda item: np.median(item[0]))]
+        data_labels = sorted(data_labels, key=lambda item: np.median(item[0]) )
+        #labels = [d for in sorted(data), key=lambda item: np.median(item)]
+        
+        data_labels = list(zip(*data_labels))
+        
+        #print(data_labels[0])
+        
+        boxplot(data_labels[0], plt.gca(), data_labels[1])
         plt.grid()
         
-        plt.pause(0.1)
+        plt.pause(0.01)
     
     
     
