@@ -14,7 +14,7 @@ from landmark_localization.landmark_localization_core import substract_angles, p
 import copy
 
 '''
-empty_quad - quadrants where no landmars placed   
+empty_quad - quadrants where are no landmars are placed   
  2 | 1
 ---+---
  3 | 0
@@ -81,8 +81,10 @@ def do_measure(test_params, landmarks):
     return landmarks_params        
 
 def plot_robot_pose(x, y, Y, color, label = None, radius = None):
-    plt.plot(x, y, "o", color = color)
-    plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label)
+    plt.plot(x, y, "o", color = 'black', zorder = 6)
+    plt.plot(x, y, ".", color = color, zorder = 7)
+    plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = 'black', zorder = 6, lw = 3)
+    plt.plot([x, x + np.cos(Y)], [y, y + np.sin(Y)], "-", color = color, label = label, zorder = 7)
     if not radius is None:
         circle = plt.Circle((x, y), radius, fill = False, color = color, ls = ":")
         ax = plt.gca()
@@ -136,7 +138,7 @@ if __name__ == '__main__':
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
-    test_params['sim']['steps'] = 1000
+    test_params['sim']['steps'] = 100
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
@@ -154,12 +156,21 @@ if __name__ == '__main__':
     test_params['robot']['sw'] = 0.01
     
     test_params['sensor'] = {}
-    test_params['sensor']['max_r'] = 5
+    test_params['sensor']['max_r'] = 7
     test_params['sensor']['max_a'] = np.pi
     test_params['sensor']['sr'] = 0.1
     test_params['sensor']['sa'] = 0.01
     
-    landmarks = generate_landmarks(test_params, empty_quad = [1, 2])        
+    #landmarks = generate_landmarks(test_params, empty_quad = [1, 2])        
+    # make em static
+    landmarks = [{'x': test_params['field']['x_max']/2., 'y': 0},
+                 {'x': -test_params['field']['x_max']/2., 'y': 0},
+                 {'x': test_params['field']['x_max']/3., 'y': -test_params['field']['y_max']/3.},
+                 {'x': -test_params['field']['x_max']/3., 'y': -test_params['field']['y_max']/3.},
+                 {'x': test_params['field']['x_max']/3.*2, 'y': -test_params['field']['y_max']/2.},
+                 {'x': -test_params['field']['x_max']/3.*2, 'y': -test_params['field']['y_max']/2.}]
+    
+    
     #TODO: read/write params from file    
     
     real_history = []
@@ -243,6 +254,8 @@ if __name__ == '__main__':
     sdl_amcl = SDL2D(sdl_amcl_params)
     sdl_amcl_history = []
     
+    landmark_num_history = []
+    
     measure_freq_cnt = 0    
     field_figure = plt.figure('field')           
     #plt.pause(2)
@@ -278,6 +291,8 @@ if __name__ == '__main__':
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
+        
+        landmark_num_history.append(len(landmarks_params))
                                 
         # GET POSES
         if HIST:
@@ -357,5 +372,27 @@ if __name__ == '__main__':
         plt.grid()
         
         plt.pause(0.01)
+        
+    plt.figure('dist_error')
+    for i, data in enumerate(data_labels[0]):        
+        plt.plot(data, color = data_labels[2][i], label = data_labels[1][i])
+    
+    max_data = np.max(data)
+    max_land = np.max(landmark_num_history)
+    scale = max_data / max_land
+    prev_i = 0
+    prev_nl = landmark_num_history[prev_i]    
+    for i, nl in enumerate(landmark_num_history):
+        if prev_nl != nl:
+            plt.fill_between(range(prev_i, i+1), prev_nl * scale, color = "gray", alpha = 0.2)
+            prev_nl = nl
+            prev_i = i
+    
+    plt.grid()
+    plt.ylabel("distance error, m")
+    plt.xlabel("step")
+    plt.legend()
+    plt.title("Distance error")
+    plt.show()
     
     
