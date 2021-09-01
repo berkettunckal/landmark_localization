@@ -343,7 +343,7 @@ class SDL2D(llc.LandmarkLocalization):
                 hf.plot()
         
         if self.params['inner_method'] == 'amcl':
-            self.inner_amcl.plot()
+            self.inner_amcl.plot(color = color)
             
         
         

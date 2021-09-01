@@ -244,7 +244,7 @@ class AMCL2D(llc.LandmarkLocalization):
         
     def plot(self, lenght = 0.2, color = 'blue'):
         for p in range(self.P.shape[0]):
-            plt.arrow(self.P[p,0], self.P[p,1], np.cos(self.P[p,2])*lenght, np.sin(self.P[p,2])*lenght, color = color, shape = 'full', head_width=0.1)
+            plt.arrow(self.P[p,0], self.P[p,1], np.cos(self.P[p,2])*lenght, np.sin(self.P[p,2])*lenght, color = color, shape = 'full', head_width=0.1, alpha = 0.5)
                            
 def mean_angles(angles, weights):
     x = y = 0.
