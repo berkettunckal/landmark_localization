@@ -68,8 +68,8 @@ def do_measure(test_params, landmarks):
         r = np.hypot(dx, dy)
         a_glob = np.arctan2(dy, dx)
         a = substract_angles(a_glob, test_params['robot']['Y'])
-        
-        if r <= test_params['sensor']['max_r'] and np.abs(a) <= test_params['sensor']['max_a']:
+                
+        if r <= test_params['sensor']['max_r'] and np.abs(a) >= test_params['sensor']['max_a']:
             landmark_param = {}
             landmark_param['x'] = landmark['x']
             landmark_param['y'] = landmark['y']
@@ -138,7 +138,7 @@ if __name__ == '__main__':
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
-    test_params['sim']['steps'] = 100
+    test_params['sim']['steps'] = 140
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
@@ -157,7 +157,7 @@ if __name__ == '__main__':
     
     test_params['sensor'] = {}
     test_params['sensor']['max_r'] = 7
-    test_params['sensor']['max_a'] = np.pi
+    test_params['sensor']['max_a'] = np.pi / 3.
     test_params['sensor']['sr'] = 0.1
     test_params['sensor']['sa'] = 0.01
     
