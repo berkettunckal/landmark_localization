@@ -68,8 +68,11 @@ def do_measure(test_params, landmarks):
         r = np.hypot(dx, dy)
         a_glob = np.arctan2(dy, dx)
         a = substract_angles(a_glob, test_params['robot']['Y'])
+        
+        a_glob_ = np.arctan2(-dy, -dx)
+        a_ = substract_angles(a_glob_, test_params['robot']['Y'])
                 
-        if r <= test_params['sensor']['max_r'] and np.abs(a) >= test_params['sensor']['max_a']:
+        if r <= test_params['sensor']['max_r'] and np.abs(a_) <= test_params['sensor']['max_a']:
             landmark_param = {}
             landmark_param['x'] = landmark['x']
             landmark_param['y'] = landmark['y']
@@ -135,16 +138,18 @@ if __name__ == '__main__':
     SDL_HF = 1
     SDL_AMCL = 1
     
+    PLOT_FIELD = 1
+    
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
-    test_params['sim']['steps'] = 140
+    test_params['sim']['steps'] = 120
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
     test_params['field']['N_landmarks'] = 10
-    test_params['field']['x_max'] = 10
-    test_params['field']['y_max'] = 12
+    test_params['field']['x_max'] = 12
+    test_params['field']['y_max'] = 10
     
     test_params['robot'] = {}
     test_params['robot']['x'] = 0
@@ -156,18 +161,18 @@ if __name__ == '__main__':
     test_params['robot']['sw'] = 0.01
     
     test_params['sensor'] = {}
-    test_params['sensor']['max_r'] = 7
-    test_params['sensor']['max_a'] = np.pi / 3.
+    test_params['sensor']['max_r'] = 11
+    test_params['sensor']['max_a'] = np.pi / 2.5
     test_params['sensor']['sr'] = 0.1
     test_params['sensor']['sa'] = 0.01
     
     #landmarks = generate_landmarks(test_params, empty_quad = [1, 2])        
     # make em static
     landmarks = [{'x': test_params['field']['x_max']/2., 'y': 0},
-                 {'x': -test_params['field']['x_max']/2., 'y': 0},
-                 {'x': test_params['field']['x_max']/3., 'y': -test_params['field']['y_max']/3.},
+                 {'x': -test_params['field']['x_max']/2., 'y': -test_params['field']['y_max']*0.1},
+                 {'x': test_params['field']['x_max']/3., 'y': -test_params['field']['y_max']/2.},
                  {'x': -test_params['field']['x_max']/3., 'y': -test_params['field']['y_max']/3.},
-                 {'x': test_params['field']['x_max']/3.*2, 'y': -test_params['field']['y_max']/2.},
+                 {'x': test_params['field']['x_max']/3.*2, 'y': -test_params['field']['y_max']/3.},
                  {'x': -test_params['field']['x_max']/3.*2, 'y': -test_params['field']['y_max']/2.}]
     
     
@@ -257,11 +262,14 @@ if __name__ == '__main__':
     landmark_num_history = []
     
     measure_freq_cnt = 0    
-    field_figure = plt.figure('field')           
+    if PLOT_FIELD:
+        field_figure = plt.figure('field')           
     #plt.pause(2)
     while test_params['sim']['step'] < test_params['sim']['steps']:
-        #field_figure.clf() # TODO: remove it
-        plt.figure('field')
+        
+        if PLOT_FIELD:
+            plt.figure('field')
+            
         test_params['sim']['step'] += 1
         
         # MOTION
@@ -309,42 +317,47 @@ if __name__ == '__main__':
             sdl_amcl_history.append(sdl_amcl_pose)
                 
         # PLOT STUFF
-        plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
-        plt.plot(np.array(real_history)[:,0], np.array(real_history)[:,1], '-r')
+        if PLOT_FIELD:
+            plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
+            plt.plot(np.array(real_history)[:,0], np.array(real_history)[:,1], '-r')
         
-        if HIST:
-            hf.plot()        
-            plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
-            plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
-            plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
-        
-        if AMCL:
-            amcl.plot()
-            plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
-            plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
-            plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+            if HIST:
+                hf.plot()        
+                plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
+                plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
+                plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
             
-        if SDL_HF:
-            sdl_hf.plot()
-            plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
-            plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
-            plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
+            if AMCL:
+                amcl.plot()
+                plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
+                plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
+                plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+                
+            if SDL_HF:
+                sdl_hf.plot()
+                plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
+                plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
+                plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
+                
+            if SDL_AMCL:
+                sdl_amcl.plot(color = 'cyan')
+                plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
+                plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
+                #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
             
-        if SDL_AMCL:
-            sdl_amcl.plot(color = 'cyan')
-            plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
-            plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
-            #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
+            plt.legend()
+            plt.grid()
+            plt.pause(0.01)
         
-        plt.legend()
-        plt.grid()
-        plt.pause(0.01)
-        
+
         plt.figure('boxplot')
         plt.cla()
         data = []
         labels = []
         colors = []
+        plt.title(f"Error distribution on step {test_params['sim']['step']}/{test_params['sim']['steps']}")
+        plt.ylabel("Error, m")
+        plt.xlabel('Method')
         
         if HIST:
             data.append(get_pose_errors(hf_history, real_history))
@@ -383,7 +396,7 @@ if __name__ == '__main__':
     prev_i = 0
     prev_nl = landmark_num_history[prev_i]    
     for i, nl in enumerate(landmark_num_history):
-        if prev_nl != nl:
+        if prev_nl != nl or i == len(landmark_num_history)-1:
             plt.fill_between(range(prev_i, i+1), prev_nl * scale, color = "gray", alpha = 0.2)
             prev_nl = nl
             prev_i = i
