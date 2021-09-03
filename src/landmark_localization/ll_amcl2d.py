@@ -131,7 +131,7 @@ class AMCL2D(llc.LandmarkLocalization):
         self.P[:,2] = llc.norm_angle(self.P[:,2])
                 
         self.check_borders()
-        self.init_weight()
+        #self.init_weight()
         
     def check_borders(self):
         if 'multi_interval_constrans' in self.params:
@@ -139,13 +139,26 @@ class AMCL2D(llc.LandmarkLocalization):
                 for i, ax in enumerate(['x', 'y', 'Y']):
                     if not self.bel_multi_interval(self.P[j,i], self.params['multi_interval_constrans'][ax]):
                         self.P[j,i] = self.get_random_value_from_multi_interval(self.params['multi_interval_constrans'][ax])
+                        self.W[j] = 0.0
         else:
+            out_indices = []
             for i, ax in enumerate(['x', 'y', 'Y']):
-                self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i])                                            
+                #self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i]) 
+                
+                #self.W[:] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']), np.zeros(self.W.shape), self.W[:]) 
+                add = np.asarray( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max'])).nonzero()                
+                out_indices += list(add[0])
+                        
+            out_indices = list(set(out_indices)) #TODO: change on np.unique sometime
+            for i in range(3):
+                self.P[out_indices,i] = np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], len(out_indices) )            
+            self.W[out_indices] = 0.0                                
+                
+                
         
     def landmarks_update(self, landmarks_params ):
         #TODO super check params
-        
+                
         # NOTE, don't forget about difference between cam and base link frames
         rl = []
         al = []
@@ -154,7 +167,12 @@ class AMCL2D(llc.LandmarkLocalization):
                rl.append([landmark_param['x'], landmark_param['y'], landmark_param['r'], landmark_param['sr']]) 
             if 'a' in landmark_param:
                 al.append([landmark_param['x'], landmark_param['y'], landmark_param['a'], landmark_param['sa']])
-        if len(rl) != 0:
+                
+        if len(rl) != 0 or len(al) != 0:
+            #self.init_weight()
+            self.was_landmark_update = True
+            
+        if len(rl) != 0:                        
             rl = np.array(rl, dtype = np.float64)
             mP = np.tile(self.P, [rl.shape[0], 1])
             mrl = np.repeat(rl, self.P.shape[0], axis = 0)
@@ -171,9 +189,7 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W += w
             else:
                 w = np.prod(w, axis = 0)
-                self.W *= w
-                
-            self.was_landmark_update = True
+                self.W *= w                            
             
         if len(al) != 0:
             al = np.array(al, dtype = np.float64)        
@@ -192,9 +208,7 @@ class AMCL2D(llc.LandmarkLocalization):
                 self.W += w
             else:
                 w = np.prod(w, axis = 0)
-                self.W *= w           
-                
-            self.was_landmark_update = True
+                self.W *= w                                       
 
     def get_pose(self):                             
         Wnorm = self.W / np.sum(self.W)
@@ -202,7 +216,7 @@ class AMCL2D(llc.LandmarkLocalization):
         robot_pose[2] = mean_angles(self.P[:,2].tolist(), self.W.tolist())
 
         self.cov = self.calc_cov(robot_pose)
-        if self.was_landmark_update:
+        if self.was_landmark_update:            
             self.resampling()
         self.was_landmark_update = False
         return robot_pose            
@@ -225,20 +239,24 @@ class AMCL2D(llc.LandmarkLocalization):
         self.W /= sumW
         indexes = np.random.choice(N, size = self.params['NP'], p = self.W)        
         self.P = self.P[indexes,:]
+        self.W = self.W[indexes]
         
         # add extra particles 
-        Padd = []        
+        Padd = []     
+        Wadd = []
         self.w_slow += self.params['alpha_slow'] * (self.w_avg - self.w_slow)
         self.w_fast += self.params['alpha_fast'] * (self.w_avg - self.w_fast)                                
         p = max(0.0, 1.0 - self.w_fast/self.w_slow)        
         for _ in range(self.params['NPmax'] - self.params['NP']):
             if np.random.uniform(0,1) <= p:
                 Padd.append(self.get_random_pose(1))
+                Wadd.append(0.0)
         if len(Padd) > 0:
             #print(Padd)
             Padd = np.array(Padd)            
             #print(self.P.shape, Padd.shape, 'multi_interval_constrans' in self.params)
             self.P = np.vstack((self.P, Padd))
+            self.W = np.hstack((self.W, Wadd))
                               
         #print("resampling w_fast/w_slow = {}, p={}, N={}".format(self.w_fast/self.w_slow, p, len(self.W)))            
         

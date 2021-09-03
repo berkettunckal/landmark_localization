@@ -61,12 +61,23 @@ class HF2D(llc.LandmarkLocalization):
         
         self.xx_mg, self.yy_mg = np.meshgrid(self.x_ls, self.y_ls)
         
+        '''
         self.plot_mx, self.plot_my = np.mgrid[slice(self.params['dims']['x']['min'],
                                 self.params['dims']['x']['min'] + self.params['dims']['x']['res'] * (self.params['dims']['x']['size']),
                                 self.params['dims']['x']['res']),
                                     slice(self.params['dims']['y']['min'],                                
                                 self.params['dims']['y']['min'] + self.params['dims']['y']['res'] * (self.params['dims']['y']['size']),
-                                self.params['dims']['y']['res'])]
+                                self.params['dims']['y']['res'])]                                            
+        '''
+        self.plot_mx, self.plot_my = np.mgrid[slice(self.params['dims']['x']['min'],
+                                self.params['dims']['x']['max'],
+                                self.params['dims']['x']['res']),
+                                    slice(self.params['dims']['y']['min'],                                
+                                self.params['dims']['y']['max'],
+                                self.params['dims']['y']['res'])]  
+                                    
+        self.plot_mx = self.plot_mx[:self.grid_size[0], :self.grid_size[1]]
+        self.plot_my = self.plot_my[:self.grid_size[0], :self.grid_size[1]]
                                                         
         self.prev_pose = None
         
@@ -257,10 +268,8 @@ class HF2D(llc.LandmarkLocalization):
         X = np.vstack((xy, YY))        
         return X
             
-    def plot(self):
-        #plt.rcParams['pcolor.shading'] ='nearest'
-        
-        plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25)
+    def plot(self):                
+        plt.pcolor(self.plot_mx, self.plot_my, np.sum(self.m_grid, axis=2), cmap=plt.cm.get_cmap("Reds"), vmin = 0, edgecolors = 'k', alpha = 0.25, shading='nearest')
         
 if __name__ == '__main__': 
     pass
