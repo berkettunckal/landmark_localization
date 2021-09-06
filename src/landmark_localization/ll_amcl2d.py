@@ -130,8 +130,7 @@ class AMCL2D(llc.LandmarkLocalization):
         self.P[:,2] = self.P[:,2] + (U_[:,1] + U_[:,2]) * motion_params['dt']
         self.P[:,2] = llc.norm_angle(self.P[:,2])
                 
-        self.check_borders()
-        #self.init_weight()
+        self.check_borders()        
         
     def check_borders(self):
         if 'multi_interval_constrans' in self.params:
@@ -139,13 +138,10 @@ class AMCL2D(llc.LandmarkLocalization):
                 for i, ax in enumerate(['x', 'y', 'Y']):
                     if not self.bel_multi_interval(self.P[j,i], self.params['multi_interval_constrans'][ax]):
                         self.P[j,i] = self.get_random_value_from_multi_interval(self.params['multi_interval_constrans'][ax])
-                        self.W[j] = 0.0
+                        self.W[j] = 0.0                        
         else:
             out_indices = []
-            for i, ax in enumerate(['x', 'y', 'Y']):
-                #self.P[:,i] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']) , np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], self.P.shape[0]), self.P[:,i]) 
-                
-                #self.W[:] = np.where( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max']), np.zeros(self.W.shape), self.W[:]) 
+            for i, ax in enumerate(['x', 'y', 'Y']):                
                 add = np.asarray( np.logical_or(self.P[:,i] < self.params['dims'][ax]['min'], self.P[:,i] > self.params['dims'][ax]['max'])).nonzero()                
                 out_indices += list(add[0])
                         
@@ -210,7 +206,8 @@ class AMCL2D(llc.LandmarkLocalization):
                 w = np.prod(w, axis = 0)
                 self.W *= w                                       
 
-    def get_pose(self):                             
+    def get_pose(self):            
+        # TODO what if sum(W) close to zero?
         Wnorm = self.W / np.sum(self.W)
         robot_pose = np.dot(Wnorm, self.P)              
         robot_pose[2] = mean_angles(self.P[:,2].tolist(), self.W.tolist())
@@ -233,7 +230,8 @@ class AMCL2D(llc.LandmarkLocalization):
         N = self.W.shape[0]
         sumW = np.sum(self.W)
         if sumW == 0:
-            self.W = 1
+            #self.W = 1
+            self.init_weight()
             return 
         
         self.W /= sumW

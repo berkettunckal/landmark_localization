@@ -13,6 +13,9 @@ from landmark_localization.ll_amcl2d import AMCL2D
 from landmark_localization.landmark_localization_core import substract_angles, plot_cov
 import copy
 
+from landmark_localization.test_utils import *
+
+'''
 def generate_landmarks(test_params):
     landmarks = []
     for i in range(test_params['field']['N_landmarks']):
@@ -96,7 +99,7 @@ def get_pose_errors(data, real):
     dr = dr[~np.isnan(dr)]
     #print(dr)
     return dr
-    
+'''
 
 if __name__ == '__main__':        
     
@@ -303,33 +306,26 @@ if __name__ == '__main__':
         plt.cla()
         data = []
         labels = []
+        colors = []
         if HIST:
             data.append(get_pose_errors(hf_history, real_history))
             labels.append('hf')
+            colors.append('green')
         if AMCL:
             data.append(get_pose_errors(amcl_history, real_history))
             labels.append('amcl')
+            colors.append('blue')
         if SDL_HF:
             data.append(get_pose_errors(sdl_hf_history, real_history))
             labels.append('sdl+hf')
+            colors.append('magenta')
         if SDL_AMCL:
             data.append(get_pose_errors(sdl_amcl_history, real_history))
             labels.append('sdl+amcl')        
+            colors.append('cyan')
 
-        data_labels = list(zip(data, labels))
-        
-        #data_labels = [d for d in sorted(data_labels, key=lambda item: np.median(item[0]))]
-        data_labels = sorted(data_labels, key=lambda item: np.median(item[0]) )
-        #labels = [d for in sorted(data), key=lambda item: np.median(item)]
-        
-        data_labels = list(zip(*data_labels))
-        
-        #print(data_labels[0])
-        
-        boxplot(data_labels[0], plt.gca(), data_labels[1])
-        plt.grid()
+
+        moving_boxplot(data, labels, colors)        
         
         plt.pause(0.01)
-    
-    
-    
+            
