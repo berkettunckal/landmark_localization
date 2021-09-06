@@ -164,8 +164,7 @@ class AMCL2D(llc.LandmarkLocalization):
             if 'a' in landmark_param:
                 al.append([landmark_param['x'], landmark_param['y'], landmark_param['a'], landmark_param['sa']])
                 
-        if len(rl) != 0 or len(al) != 0:
-            #self.init_weight()
+        if len(rl) != 0 or len(al) != 0:        
             self.was_landmark_update = True
             
         if len(rl) != 0:                        
@@ -173,9 +172,7 @@ class AMCL2D(llc.LandmarkLocalization):
             mP = np.tile(self.P, [rl.shape[0], 1])
             mrl = np.repeat(rl, self.P.shape[0], axis = 0)
             dx = mrl[:,0] - mP[:,0]
-            dy = mrl[:,1] - mP[:,1]     
-            #print(dx.shape, dy.shape)
-            #print(np.__version__)
+            dy = mrl[:,1] - mP[:,1]                 
             dr = np.hypot(dx, dy) - mrl[:,2]
             w_all = norm.pdf(dr, scale = mrl[:,3])            
             w = w_all.reshape((rl.shape[0], self.P.shape[0]))            

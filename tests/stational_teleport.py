@@ -2,7 +2,7 @@
 # coding: utf-8
 
 '''
-simple test, where robot moves through landmarks field with constant linear and angular speed
+test, where robots stands on one position but sometimes teleports 
 '''
 
 import numpy as np
@@ -31,18 +31,19 @@ if __name__ == '__main__':
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
-    test_params['field']['N_landmarks'] = 10
+    test_params['field']['N_landmarks'] = 20
     test_params['field']['x_max'] = 10
     test_params['field']['y_max'] = 12
     
     test_params['robot'] = {}
-    test_params['robot']['x'] = 0
-    test_params['robot']['y'] = -9
-    test_params['robot']['Y'] = 0
-    test_params['robot']['v'] = 0.1
-    test_params['robot']['w'] = 0.012
-    test_params['robot']['sv'] = 0.01
-    test_params['robot']['sw'] = 0.01
+    test_params['robot']['x'] = np.random.uniform(-test_params['field']['x_max'], test_params['field']['x_max'])
+    test_params['robot']['y'] = np.random.uniform(-test_params['field']['y_max'], test_params['field']['y_max'])
+    test_params['robot']['Y'] = np.random.uniform(-np.pi, np.pi)
+    
+    test_params['robot']['v'] = 0.0001
+    test_params['robot']['w'] = 0.0001
+    test_params['robot']['sv'] = 0.001
+    test_params['robot']['sw'] = 0.001
     
     test_params['sensor'] = {}
     test_params['sensor']['max_r'] = 10
@@ -137,12 +138,26 @@ if __name__ == '__main__':
     measure_freq_cnt = 0    
     field_figure = plt.figure('field')           
     
+    teleport_chance = 0.2
+    
     while test_params['sim']['step'] < test_params['sim']['steps']:        
         plt.figure('field')
         test_params['sim']['step'] += 1
         
         # MOTION
-        motion_params = do_motion(test_params)
+        motion_params = {}
+        motion_params['dt'] = test_params['sim']['dt']    
+        motion_params['wY'] = test_params['robot']['w'] 
+        motion_params['swY'] = test_params['robot']['sw']    
+        motion_params['vx'] = test_params['robot']['v'] 
+        motion_params['svx'] = test_params['robot']['sv']
+        
+        if np.random.uniform(0,1) <= teleport_chance:
+            test_params['robot']['x'] = np.random.uniform(-test_params['field']['x_max'], test_params['field']['x_max'])
+            test_params['robot']['y'] = np.random.uniform(-test_params['field']['y_max'], test_params['field']['y_max'])
+            test_params['robot']['Y'] = np.random.uniform(-np.pi, np.pi)
+            
+        
         real_history.append([test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y']])
         if HIST:
             hf.motion_update(motion_params)
