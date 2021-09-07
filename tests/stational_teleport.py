@@ -140,6 +140,7 @@ if __name__ == '__main__':
     
     teleport_chance = 0.2
     
+    
     while test_params['sim']['step'] < test_params['sim']['steps']:        
         plt.figure('field')
         test_params['sim']['step'] += 1
@@ -151,11 +152,13 @@ if __name__ == '__main__':
         motion_params['swY'] = test_params['robot']['sw']    
         motion_params['vx'] = test_params['robot']['v'] 
         motion_params['svx'] = test_params['robot']['sv']
-        
+    
+        teleported = False
         if np.random.uniform(0,1) <= teleport_chance:
             test_params['robot']['x'] = np.random.uniform(-test_params['field']['x_max'], test_params['field']['x_max'])
             test_params['robot']['y'] = np.random.uniform(-test_params['field']['y_max'], test_params['field']['y_max'])
             test_params['robot']['Y'] = np.random.uniform(-np.pi, np.pi)
+            teleported = True
             
         
         real_history.append([test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y']])
@@ -172,6 +175,7 @@ if __name__ == '__main__':
         landmarks_params = []
         if measure_freq_cnt == test_params['sim']['measure_freq'] or test_params['sim']['step'] == 1:            
             landmarks_params = do_measure(test_params, landmarks)
+            landmarks_params = landmarks_params[:min(len(landmarks_params),3)]
             if HIST:
                 hf.landmarks_update(landmarks_params)
             if AMCL:
@@ -221,7 +225,7 @@ if __name__ == '__main__':
             plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
             
         if SDL_AMCL:
-            sdl_amcl.plot()
+            sdl_amcl.plot('cyan')
             plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
             plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
             #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
@@ -235,24 +239,24 @@ if __name__ == '__main__':
         data = []
         labels = []
         colors = []
-        if HIST:
-            data.append(get_pose_errors(hf_history, real_history))
-            labels.append('hf')
-            colors.append('green')
-        if AMCL:
-            data.append(get_pose_errors(amcl_history, real_history))
-            labels.append('amcl')
-            colors.append('blue')
-        if SDL_HF:
-            data.append(get_pose_errors(sdl_hf_history, real_history))
-            labels.append('sdl+hf')
-            colors.append('magenta')
-        if SDL_AMCL:
-            data.append(get_pose_errors(sdl_amcl_history, real_history))
-            labels.append('sdl+amcl')        
-            colors.append('cyan')
+        if teleported:
+            if HIST:
+                data.append(get_pose_errors(hf_history, real_history))
+                labels.append('hf')
+                colors.append('green')
+            if AMCL:
+                data.append(get_pose_errors(amcl_history, real_history))
+                labels.append('amcl')
+                colors.append('blue')
+            if SDL_HF:
+                data.append(get_pose_errors(sdl_hf_history, real_history))
+                labels.append('sdl+hf')
+                colors.append('magenta')
+            if SDL_AMCL:
+                data.append(get_pose_errors(sdl_amcl_history, real_history))
+                labels.append('sdl+amcl')        
+                colors.append('cyan')
 
-        moving_boxplot(data, labels, colors)
-        
-        plt.pause(0.01)
+            moving_boxplot(data, labels, colors)        
+            plt.pause(0.01)
             

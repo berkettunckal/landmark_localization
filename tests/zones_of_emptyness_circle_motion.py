@@ -266,10 +266,8 @@ if __name__ == '__main__':
         moving_boxplot(data, labels, colors)
         plt.pause(0.01)
         
-        
-    plt.figure('dist_error')
-    #for i, data in enumerate(data_labels[0]):        
-        #plt.plot(data, color = data_labels[2][i], label = data_labels[1][i])
+    # DIST GRAPH
+    plt.figure('dist_error')    
     for i, dat in enumerate(data):
         plt.plot(dat, color = colors[i], label = labels[i])
     
@@ -289,6 +287,34 @@ if __name__ == '__main__':
     plt.xlabel("step")
     plt.legend()
     plt.title("Distance error")
+    
+    # DIST BOXPLOTS
+        
+    def get_indexes(num, split):
+        indexes = np.asarray(landmark_num_history == num).nonzero()
+        
+        if not split:
+            return indexes
+        
+        ## split em
+        diff = indexes[1:] - indexes[:-1]
+        split_ind = np.argmax(diff) # maybe -1
+    
+        indexes1 = indexes[:split_ind]
+        indexes2 = indexes[split_ind:]
+        
+        return indexes1, indexes2
+    
+    ## get indexes of 3 landmark
+    indexes_3_1, indexes_3_2 = get_indexes(3, True)
+    indexes_2_1, indexes_2_2 = get_indexes(2, True)
+    indexes_1_1, indexes_1_2 = get_indexes(1, True)
+    indexex_0 = get_indexes(0, False)
+    
+         
+    
+    
+    
     plt.show()
     
     

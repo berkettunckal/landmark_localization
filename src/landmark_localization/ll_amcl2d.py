@@ -138,7 +138,7 @@ class AMCL2D(llc.LandmarkLocalization):
                 for i, ax in enumerate(['x', 'y', 'Y']):
                     if not self.bel_multi_interval(self.P[j,i], self.params['multi_interval_constrans'][ax]):
                         self.P[j,i] = self.get_random_value_from_multi_interval(self.params['multi_interval_constrans'][ax])
-                        self.W[j] = 0.0                        
+                        self.W[j] = 1./self.W.shape[0]#0.0                        
         else:
             out_indices = []
             for i, ax in enumerate(['x', 'y', 'Y']):                
@@ -148,7 +148,7 @@ class AMCL2D(llc.LandmarkLocalization):
             out_indices = list(set(out_indices)) #TODO: change on np.unique sometime
             for i in range(3):
                 self.P[out_indices,i] = np.random.uniform(self.params['dims'][ax]['min'],self.params['dims'][ax]['max'], len(out_indices) )            
-            self.W[out_indices] = 0.0                                
+            self.W[out_indices] = 1./self.W.shape[0]                                
                 
                 
         
@@ -205,6 +205,11 @@ class AMCL2D(llc.LandmarkLocalization):
 
     def get_pose(self):            
         # TODO what if sum(W) close to zero?
+        if np.sum(self.W) == 0:
+            self.init_pf()
+            #return None
+            #return [None, None, None]
+        
         Wnorm = self.W / np.sum(self.W)
         robot_pose = np.dot(Wnorm, self.P)              
         robot_pose[2] = mean_angles(self.P[:,2].tolist(), self.W.tolist())
