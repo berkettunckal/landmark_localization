@@ -25,7 +25,7 @@ if __name__ == '__main__':
     SDL_HF = 1
     SDL_AMCL = 1
     
-    PLOT_FIELD = 0
+    PLOT_FIELD = 1
     
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
@@ -288,16 +288,18 @@ if __name__ == '__main__':
     plt.legend()
     plt.title("Distance error")
     
+    plt.pause(0.01)
+    
     # DIST BOXPLOTS
         
-    def get_indexes(num, split):
-        indexes = np.asarray(landmark_num_history == num).nonzero()
+    def get_indexes(num, split):        
+        indexes = np.asarray(np.array(landmark_num_history) == num).nonzero()[0]
         
         if not split:
             return indexes
         
         ## split em
-        diff = indexes[1:] - indexes[:-1]
+        diff = np.array(indexes)[1:] - np.array(indexes)[:-1]
         split_ind = np.argmax(diff) # maybe -1
     
         indexes1 = indexes[:split_ind]
@@ -311,9 +313,47 @@ if __name__ == '__main__':
     indexes_1_1, indexes_1_2 = get_indexes(1, True)
     indexex_0 = get_indexes(0, False)
     
-         
+    order = [indexes_3_1, indexes_2_1, indexes_1_1, indexex_0, indexes_1_2, indexes_2_2, indexes_3_2]
     
+    super_data = []
+    super_labels = []
+    super_colors = []
     
+    for ind in order:
+        for dat in data:
+            super_data.append(np.array(dat)[ind])
+        super_colors += colors
+        super_labels += labels         
+    
+    plt.figure('splited boxplots')
+    boxplot(super_data, plt.gca(), super_labels, super_colors)
+    plt.grid()
+    
+    # DIST FILLBETWEEN
+    plt.figure('dist fill between')
+    
+    x = [0, 1, 2, 3, 4, 5, 6]
+    X = ['3', '2', '1', '0', '1', '2', '3']
+    
+    for i, dat in enumerate(data):
+        means = []
+        q1 = []
+        q3 = []
+        for ind in order:        
+            d = np.array(dat)[ind]
+            means.append(np.median(d))
+            q1.append(np.quantile(d, 0.25))
+            q3.append(np.quantile(d, 0.75))
+        plt.plot(x, means, label = labels[i], color = colors[i])
+        plt.fill_between(x, q1, q3, alpha = 0.1, color = colors[i])
+    
+    plt.title("Zones of emptyness test")
+    plt.ylabel('Distance error, m')
+    plt.xlabel('Number of visible landmarks')
+    plt.grid()
+    plt.legend()
+    plt.xticks(x, X)
+    plt.pause(0.001)
     
     plt.show()
     

@@ -4,14 +4,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.landmark_localization_core import substract_angles
 
-# ===========
-#   P L O T
-# ===========
-def boxplot( data, ax, labels, colors, rotation  = 0):
+# =====================
+#   P L O T   D A T A
+# =====================
+def boxplot( data, ax, labels, colors, current = True, rotation  = 0):
     for i, datum in enumerate(data):
         bp = ax.boxplot(datum, sym='.'+colors[i][0], positions = range(i,i+1), zorder = 1)
         plt.setp(bp['medians'], color=colors[i], linewidth=3)    
-        if len(datum) > 0:
+        if current and len(datum) > 0:
             plt.plot(i, datum[-1], "o", color = 'black', zorder = 2)
             plt.plot(i, datum[-1], ".", color = colors[i], zorder = 3)
     plt.xticks(range(0,len(data)), labels, rotation = rotation)    
@@ -23,6 +23,10 @@ def moving_boxplot(data, labels, colors):
     
     boxplot(data_labels[0], plt.gca(), data_labels[1], data_labels[2])
     plt.grid()  
+
+# =====================
+#   P L O T   S I M
+# =====================
 
 def plot_robot_pose(x, y, Y, color, label = None, radius = None):
     plt.plot(x, y, "o", color = 'black', zorder = 6)
