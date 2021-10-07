@@ -207,5 +207,6 @@ if ("$ENV{ROS_DISTRO}" STREQUAL "noetic")
 catkin_install_python(PROGRAMS
     scripts/ll_amcl_ros_2d.py
     scripts/ll_hf_ros_2d.py
+    scripts/ll_sdl_ros_2d.py
     DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 endif()

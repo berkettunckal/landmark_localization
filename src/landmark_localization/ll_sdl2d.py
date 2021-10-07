@@ -270,8 +270,10 @@ class SDL2D(llc.LandmarkLocalization):
                         hf = HF2D(hf_params)
                         hf.prev_pose = self.inner_hf_prev_pose
                         hf.cov = self.inner_hf_cov
-                        hf.motion_update(self.current_motion_params)
-                        hf.landmarks_update(self.current_landmarks_params)
+                        if not self.current_motion_params is None:
+                            hf.motion_update(self.current_motion_params)
+                        if not self.current_landmarks_params is None:
+                            hf.landmarks_update(self.current_landmarks_params)
                         self.inner_hf_poses.append(hf.get_pose())
                         self.inner_hf_weights.append(hf.get_weight())                                                
                         self.inner_hfs.append(hf)
@@ -302,8 +304,10 @@ class SDL2D(llc.LandmarkLocalization):
             else:
                 self.inner_amcl.params = self.params['inner_method_params']
             
-            self.inner_amcl.motion_update(self.current_motion_params)
-            self.inner_amcl.landmarks_update(self.current_landmarks_params)
+            if not self.current_motion_params is None:
+                self.inner_amcl.motion_update(self.current_motion_params)
+            if not self.current_landmarks_params is None:
+                self.inner_amcl.landmarks_update(self.current_landmarks_params)
             pose = self.inner_amcl.get_pose()  
                     
         self.current_landmarks_params = []

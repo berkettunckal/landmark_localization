@@ -44,3 +44,6 @@ class HFROS2D(LandmarkLocalizationRos2D):
         msg.info.origin.position.y = self.ll_method.params['dims']['y']['min']
         
         self.vis_pub.publish(msg)
+
+
+    

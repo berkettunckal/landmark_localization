@@ -135,9 +135,9 @@ class LandmarkLocalizationRos2D(object):
                     vector_dst = np.dot(self.landmark_transform, vector_src)                    
                     
                     if so.transform.translation.z != 1:# z = 1 means real transform is't known
-                        landmark_param['r'] = np.hypot(vector_dst[0], vector_dst[1])
+                        landmark_param['r'] = float(np.hypot(vector_dst[0], vector_dst[1]))
                         landmark_param['sr'] = self.landmark_r_sigma
-                    landmark_param['a'] = np.arctan2(-vector_dst[1], -vector_dst[0]) #NOTE: not sure it is good
+                    landmark_param['a'] = float(np.arctan2(-vector_dst[1], -vector_dst[0])) #NOTE: not sure it is good
                     landmark_param['sa'] = self.landmark_a_sigma
                     
                     landmarks_params.append(landmark_param)
@@ -181,6 +181,8 @@ class LandmarkLocalizationRos2D(object):
         out_msg_p = ll_utils.robot_pose_to_pose(robot_pose)
         if any(item in self.output_data_format for item in ['pc', 'pcs', 'o']):
             cov = self.ll_method.get_cov()
+            if cov is None:
+                cov = np.zeros((3,3))
         for df, msg_t in self.output_pubs.items():
             if df == 'p':
                 self.output_pubs[df].publish(out_msg_p)

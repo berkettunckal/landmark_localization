@@ -21,7 +21,7 @@ def u_sqrt(var, neg_values = True):
     if type(var) is sd_mi:
         return var.get_sqrt(neg_values = neg_values)
     else:
-        raise ValueError('unificated sqrt can works only with int, float, sd_var or smd_mi, not {}'.format(type(var)))
+        raise ValueError('unificated sqrt can works only with int, float, sd_var or smd_mi, not {} of type {}'.format(var, type(var)))
     
 def u_atan2(y, x):
     if type(y) is sd_mi or type(x) is sd_mi:

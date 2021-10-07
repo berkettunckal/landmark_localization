@@ -25,15 +25,7 @@ class AMCLROS2D(LandmarkLocalizationRos2D):
             self.vis_pub = rospy.Publisher("~particles", PoseArray, queue_size = 1)
                     
     def visualizate(self):
-        msg = PoseArray()
-        msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = self.map_frame
-        for p in range(self.ll_method.P.shape[0]):
-            pose = Pose()
-            pose.position.x = self.ll_method.P[p,0]
-            pose.position.y = self.ll_method.P[p,1]
-            pose.orientation = quaternion_msg_from_yaw(self.ll_method.P[p,2])
-            msg.poses.append(pose)
+        msg = get_particles_msg(self.ll_method, self.map_frame)        
         self.vis_pub.publish(msg)
         
     def proc_cb(self, event):
@@ -52,4 +44,17 @@ class AMCLROS2D(LandmarkLocalizationRos2D):
             d = MultiArrayDimension()
             d.label = "w_fast"
             msg.layout.dim.append(d)
-            self.debug_pub.publish(msg)   
+            self.debug_pub.publish(msg)  
+            
+def get_particles_msg(amcl_method, map_frame):
+    msg = PoseArray()
+    msg.header.stamp = rospy.Time.now()
+    msg.header.frame_id = map_frame
+    for p in range(amcl_method.P.shape[0]):
+        pose = Pose()
+        pose.position.x = amcl_method.P[p,0]
+        pose.position.y = amcl_method.P[p,1]
+        pose.orientation = quaternion_msg_from_yaw(amcl_method.P[p,2])
+        msg.poses.append(pose)
+    return msg
+    
