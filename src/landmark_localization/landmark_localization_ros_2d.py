@@ -121,7 +121,7 @@ class LandmarkLocalizationRos2D(object):
                                 
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException,tf2_ros.ExtrapolationException):
                 rospy.logerr('[{}] timed out transform {} to {}, can\'t proceed landmark data'.format(rospy.get_name(), self.base_frame, msg.header.frame_id))
-                return            
+                return None         
             
         landmarks_params = []
         for so in msg.objects:
@@ -168,10 +168,11 @@ class LandmarkLocalizationRos2D(object):
         if not self.last_landmark_msg is None:
             if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
                 lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.used_eod_ids, self.used_map_ids)
-                self.ll_method.landmarks_update(lp)
-                if self.visualizate_map:
-                    id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg)
-                    self.last_landmark_msg = None
+                if not lp is None:
+                    self.ll_method.landmarks_update(lp)
+                    if self.visualizate_map:
+                        id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg)
+                        self.last_landmark_msg = None
             else:
                 rospy.logwarn("[{}] skipped landmark data due to old timestamp.".format(rospy.get_name()))
             
