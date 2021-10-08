@@ -259,7 +259,7 @@ class SDL2D(llc.LandmarkLocalization):
             for x in self.model.variables['x']['VALUE']:
                 for y in self.model.variables['y']['VALUE']:
                     for Y in self.model.variables['Y']['VALUE']:
-                        hf_params = copy.deepcopy(self.params['inner_method_params'])
+                        hf_params = copy.deepcopy(self.params['inner_method_params'])                        
                         hf_params['dims']['x']['min'] = x.low
                         hf_params['dims']['x']['max'] = x.high
                         hf_params['dims']['y']['min'] = y.low

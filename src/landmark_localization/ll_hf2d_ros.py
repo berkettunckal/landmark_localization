@@ -24,26 +24,27 @@ class HFROS2D(LandmarkLocalizationRos2D):
         if self.visualizate_output:        
             self.vis_pub = rospy.Publisher("~grid", OccupancyGrid, queue_size = 1)
             
-    def visualizate(self):
-        msg = OccupancyGrid()
-        
-        msg.header.stamp = rospy.Time.now()
-        msg.header.frame_id = self.map_frame
-            
-        w = np.sum(self.ll_method.m_grid, axis = 2)
-        w = w.T
-        w = w.flatten()
-        w = (w / np.max(w)) * 100
-        msg.data = w.astype(np.int8).tolist()
-        
-        msg.info.map_load_time = rospy.Time.now()
-        msg.info.resolution = self.ll_method.params['dims']['x']['res'] #NOTE: wrong if x and y has really different resolutions
-        msg.info.width = self.ll_method.params['dims']['x']['size']
-        msg.info.height = self.ll_method.params['dims']['y']['size']
-        msg.info.origin.position.x = self.ll_method.params['dims']['x']['min']
-        msg.info.origin.position.y = self.ll_method.params['dims']['y']['min']
-        
+    def visualizate(self):        
+        msg = get_grid_msg(self.ll_method, self.map_frame)
         self.vis_pub.publish(msg)
 
-
+def get_grid_msg(hf_method, map_frame):
+    msg = OccupancyGrid()
+        
+    msg.header.stamp = rospy.Time.now()
+    msg.header.frame_id = map_frame
+        
+    w = np.sum(hf_method.m_grid, axis = 2)
+    w = w.T
+    w = w.flatten()
+    w = (w / np.max(w)) * 100
+    msg.data = w.astype(np.int8).tolist()
     
+    msg.info.map_load_time = rospy.Time.now()
+    msg.info.resolution = hf_method.params['dims']['x']['res'] #NOTE: wrong if x and y has really different resolutions
+    msg.info.width = hf_method.params['dims']['x']['size']
+    msg.info.height = hf_method.params['dims']['y']['size']
+    msg.info.origin.position.x = hf_method.params['dims']['x']['min']
+    msg.info.origin.position.y = hf_method.params['dims']['y']['min']
+    
+    return msg
