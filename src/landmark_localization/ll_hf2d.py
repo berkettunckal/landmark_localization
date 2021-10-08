@@ -101,8 +101,8 @@ class HF2D(llc.LandmarkLocalization):
             dim['max']  += dim['res']
             dim['size'] += 1
         else:
-            dim['min_len'] -= dim['d_res']/2
-            dim['max_len'] += dim['d_res']/2
+            #dim['min_len'] -= dim['d_res']/2
+            #dim['max_len'] += dim['d_res']/2
             dim['size'] = 1
             dim['res'] = dim['d_res']
         
@@ -111,7 +111,7 @@ class HF2D(llc.LandmarkLocalization):
         # TODO super check params
                 
         r = motion_params['dt'] * motion_params['vx']
-        da = motion_params['dt'] * motion_params['wY']
+        da = motion_params['dt'] * motion_params['wY']                
                 
         if self.params['motion_update_type'] == 'BLUR_SHIFT':
             # TODO stash motion between steps without landmark update
@@ -140,6 +140,9 @@ class HF2D(llc.LandmarkLocalization):
                     self.m_grid[:,y_shift:,yaw_row] = self.m_grid[:,:-y_shift,yaw_row]
             
                 self.m_grid[:,:,yaw_row] = gaussian_filter(self.m_grid[:,:,yaw_row], sigma = motion_params['svx'] * r)
+        elif self.params['motion_update_type'] == 'BLUR':
+            self.m_grid = gaussian_filter(self.m_grid, sigma = motion_params['svx'])
+            
         elif self.params['motion_update_type'] == 'PREV_COV':
             
             if not self.prev_pose is None:                
@@ -171,6 +174,12 @@ class HF2D(llc.LandmarkLocalization):
                     self.m_grid += p
                 else:
                     self.m_grid *= p
+                    
+        elif self.params['motion_update_type'] == 'PREV_STEP_AS_IF':
+            pass
+        else:
+            print('Unknown motion update type {}'.format(self.params['motion_update_type']))
+            
             
         self.s_grid = self.reset_grid()
     
