@@ -216,7 +216,7 @@ if __name__ == '__main__':
         plt.pause(0.01)
         
         plt.figure('boxplot')
-        plt.cla()
+        plt.cla()        
         data = []
         labels = []
         colors = []
@@ -238,6 +238,7 @@ if __name__ == '__main__':
             colors.append('cyan')
 
         moving_boxplot(data, labels, colors)
+        plt.title("Distance error distribution")
         
         plt.pause(0.01)
             
