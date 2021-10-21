@@ -4,7 +4,7 @@ __== Project in early stage of development==__
 
 ROS package for robot localization by landmarks.
 
-##Icluded methods:
+## Included methods:
 ### 2D:
  - [ ] Extended Kalman Filter (EKF)
  - [x] Basic histogram filter (HF)
