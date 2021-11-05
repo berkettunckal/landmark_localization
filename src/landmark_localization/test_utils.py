@@ -3,6 +3,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.landmark_localization_core import substract_angles
+import time
 
 # =====================
 #   P L O T   D A T A
@@ -23,6 +24,22 @@ def moving_boxplot(data, labels, colors):
     
     boxplot(data_labels[0], plt.gca(), data_labels[1], data_labels[2])
     plt.grid()  
+    plt.title("Pose error distribution")
+    plt.ylabel('Pose error, m')
+    
+def time_plot(time_data, labels, colors):
+    for i, method_data in enumerate(time_data):
+        total = 0
+        for step, data in method_data.items():
+            total += np.mean(data)
+            #plt.plot(i, total, 'o', color = colors[i])
+            plt.errorbar(i, total, yerr=np.std(data),  color = colors[i], fmt='.')#,uplims=True, lolims=True)
+            
+    plt.xticks(range(len(time_data)), labels)
+    plt.grid()
+    plt.title('Time distribution')
+    plt.ylabel('Ellapsed time, s')
+    
 
 # =====================
 #   P L O T   S I M
@@ -142,3 +159,13 @@ def get_pose_errors(data, real):
     dr = dr[~np.isnan(dr)]
     #print(dr)
     return dr   
+
+class tick_tocker(object):
+    def __init__(self):
+        self.start_t = None
+        
+    def start(self):
+        self.start_t = time.time()
+        
+    def end(self):
+        return time.time() - self.start_t

@@ -24,6 +24,8 @@ if __name__ == '__main__':
     SDL_HF = 1
     SDL_AMCL = 1
     
+    PLOT_FIELD = 0
+    
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
@@ -54,6 +56,11 @@ if __name__ == '__main__':
     #TODO: read/write params from file    
     
     real_history = []
+    
+    times = {'motion': [],
+             'landmarks': [],
+             'get_pose': []}
+    timer = tick_tocker()
     '''
     localization methods
     '''    
@@ -79,10 +86,11 @@ if __name__ == '__main__':
     hf_params['pose_calc_type'] = 'MAX'
     hf = HF2D(hf_params)
     hf_history = []
+    hf_times = copy.deepcopy(times)
     
     amcl_params = {}
     amcl_params['NP'] = 1000
-    amcl_params['NPmax'] = 2000
+    amcl_params['NPmax'] = 5000
     amcl_params['alpha_slow'] = 0.05
     amcl_params['alpha_fast'] = 0.1
     amcl_params['dims'] = {}
@@ -98,6 +106,7 @@ if __name__ == '__main__':
     amcl_params['calc_type'] = "MULTIPLICATION"
     amcl = AMCL2D(amcl_params)
     amcl_history = []
+    amcl_times = copy.deepcopy(times)
     
     sdl_hf_params = {}
     sdl_hf_params['verbose'] = False
@@ -116,6 +125,7 @@ if __name__ == '__main__':
     #sdl_hf_params['inner_method_params']['pose_calc_type'] = 'SUM'
     sdl_hf = SDL2D(sdl_hf_params)
     sdl_hf_history = []
+    sdl_hf_times = copy.deepcopy(times)
     
     sdl_amcl_params = {}
     sdl_amcl_params['verbose'] = False
@@ -131,89 +141,121 @@ if __name__ == '__main__':
     sdl_amcl_params['dims']['Y']['max'] = np.pi    
     sdl_amcl_params['inner_method'] = 'amcl'
     sdl_amcl_params['inner_method_params'] = copy.deepcopy(amcl_params)
+    # amcl params overwrite
+    sdl_amcl_params['inner_method_params']['NP'] = 10
+    sdl_amcl_params['inner_method_params']['NPmax'] = 20
+    
     sdl_amcl = SDL2D(sdl_amcl_params)
     sdl_amcl_history = []
+    sdl_amcl_times = copy.deepcopy(times)
     
     measure_freq_cnt = 0    
-    field_figure = plt.figure('field')           
+    if PLOT_FIELD:
+        field_figure = plt.figure('field')           
     
     while test_params['sim']['step'] < test_params['sim']['steps']:        
-        plt.figure('field')
+        if PLOT_FIELD:
+            plt.figure('field')
         test_params['sim']['step'] += 1
         
         # MOTION
         motion_params = do_motion(test_params)
         real_history.append([test_params['robot']['x'], test_params['robot']['y'], test_params['robot']['Y']])
         if HIST:
+            timer.start()
             hf.motion_update(motion_params)
+            hf_times['motion'].append(timer.end())
         if AMCL:
+            timer.start()
             amcl.motion_update(motion_params)
+            amcl_times['motion'].append(timer.end())
         if SDL_HF:
+            timer.start()
             sdl_hf.motion_update(motion_params)
+            sdl_hf_times['motion'].append(timer.end())
         if SDL_AMCL:
+            timer.start()
             sdl_amcl.motion_update(motion_params)
+            sdl_amcl_times['motion'].append(timer.end())
                 
         # MEASURE
         landmarks_params = []
         if measure_freq_cnt == test_params['sim']['measure_freq'] or test_params['sim']['step'] == 1:            
             landmarks_params = do_measure(test_params, landmarks)
             if HIST:
+                timer.start()
                 hf.landmarks_update(landmarks_params)
+                hf_times['landmarks'].append(timer.end())
             if AMCL:
+                timer.start()
                 amcl.landmarks_update(landmarks_params)
+                amcl_times['landmarks'].append(timer.end())
             if SDL_HF:
+                timer.start()
                 sdl_hf.landmarks_update(landmarks_params)
+                sdl_hf_times['landmarks'].append(timer.end())
             if SDL_AMCL:
+                timer.start()
                 sdl_amcl.landmarks_update(landmarks_params)
+                sdl_amcl_times['landmarks'].append(timer.end())
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
                                 
         # GET POSES
         if HIST:
+            timer.start()
             hf_pose = hf.get_pose()
             hf_history.append(hf_pose)
+            hf_times['get_pose'].append(timer.end())
         if AMCL:
+            timer.start()
             amcl_pose = amcl.get_pose()        
             amcl_history.append(amcl_pose)
+            amcl_times['get_pose'].append(timer.end())
         if SDL_HF:
+            timer.start()
             sdl_hf_pose = sdl_hf.get_pose()
             sdl_hf_history.append(sdl_hf_pose)
+            sdl_hf_times['get_pose'].append(timer.end())
         if SDL_AMCL:
+            timer.start()
             sdl_amcl_pose = sdl_amcl.get_pose()
             sdl_amcl_history.append(sdl_amcl_pose)
+            sdl_amcl_times['get_pose'].append(timer.end())
                 
         # PLOT STUFF
-        plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
-        plt.plot(np.array(real_history)[:,0], np.array(real_history)[:,1], '-r')
-        
-        if HIST:
-            hf.plot()        
-            plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
-            plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
-            plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
-        
-        if AMCL:
-            amcl.plot()
-            plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
-            plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
-            plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+        if PLOT_FIELD:
+            plot_exp_base(field_figure, test_params, landmarks_params, landmarks)        
+            plt.plot(np.array(real_history)[:,0], np.array(real_history)[:,1], '-r')
             
-        if SDL_HF:
-            sdl_hf.plot()
-            plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
-            plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
-            plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
+            if HIST:
+                hf.plot()        
+                plot_robot_pose(hf_pose[0], hf_pose[1], hf_pose[2], "green", "hf")                
+                plt.plot(np.array(hf_history)[:,0], np.array(hf_history)[:,1], '-g')        
+                plot_cov(plt.gca(), hf_pose, hf.get_cov(), color = 'g')
             
-        if SDL_AMCL:
-            sdl_amcl.plot()
-            plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
-            plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
-            #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
-        
-        plt.legend()
-        plt.grid()
-        plt.pause(0.01)
+            if AMCL:
+                amcl.plot()
+                plot_robot_pose(amcl_pose[0], amcl_pose[1], amcl_pose[2], "blue", "amcl")                
+                plt.plot(np.array(amcl_history)[:,0], np.array(amcl_history)[:,1], '-b')
+                plot_cov(plt.gca(), amcl_pose, amcl.get_cov(), color = 'b')
+                
+            if SDL_HF:
+                sdl_hf.plot()
+                plot_robot_pose(sdl_hf_pose[0], sdl_hf_pose[1], sdl_hf_pose[2], "magenta", "sdl+hf")                
+                plt.plot(np.array(sdl_hf_history)[:,0], np.array(sdl_hf_history)[:,1], '-m')        
+                plot_cov(plt.gca(), sdl_hf_pose, sdl_hf.get_cov(), color = 'm')
+                
+            if SDL_AMCL:
+                sdl_amcl.plot()
+                plot_robot_pose(sdl_amcl_pose[0], sdl_amcl_pose[1], sdl_amcl_pose[2], "cyan", "sdl+amcl")
+                plt.plot(np.array(sdl_amcl_history)[:,0], np.array(sdl_amcl_history)[:,1], '-c')
+                #plot_cov(plt.gca(), sdl_amcl_pose, sdl_amcl.get_cov(), color = 'c')
+            
+            plt.legend()
+            plt.grid()
+            plt.pause(0.01)
         
         plt.figure('boxplot')
         plt.cla()        
@@ -237,8 +279,32 @@ if __name__ == '__main__':
             labels.append('sdl+amcl')        
             colors.append('cyan')
 
-        moving_boxplot(data, labels, colors)
-        plt.title("Distance error distribution")
+        moving_boxplot(data, labels, colors)        
+        plt.pause(0.01)
+        
+        plt.figure('time plot')
+        plt.cla()        
+        data = []
+        labels = []
+        colors = []
+        if HIST:
+            labels.append('hf')
+            data.append(hf_times)
+            colors.append('green')
+        if AMCL:
+            labels.append('amcl')
+            data.append(amcl_times)
+            colors.append('blue')
+        if SDL_HF:
+            labels.append('sdl_hf')
+            data.append(sdl_hf_times)
+            colors.append('magenta')
+        if SDL_AMCL:
+            labels.append('sdl_amcl')
+            data.append(sdl_amcl_times)
+            colors.append('cyan')
+        
+        time_plot(data, labels, colors)        
         
         plt.pause(0.01)
             
