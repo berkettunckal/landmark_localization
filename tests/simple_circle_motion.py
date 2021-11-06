@@ -12,8 +12,9 @@ from landmark_localization.ll_sdl2d import SDL2D
 from landmark_localization.ll_amcl2d import AMCL2D
 from landmark_localization.landmark_localization_core import substract_angles, plot_cov
 import copy
-
+import datetime
 from landmark_localization.test_utils import *
+from pathlib import Path
 
 if __name__ == '__main__':        
     
@@ -29,7 +30,7 @@ if __name__ == '__main__':
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
-    test_params['sim']['steps'] = 1000
+    test_params['sim']['steps'] = 10
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
@@ -56,6 +57,7 @@ if __name__ == '__main__':
     #TODO: read/write params from file    
     
     real_history = []
+    landmarks_num_history = []
     
     times = {'motion': [],
              'landmarks': [],
@@ -201,6 +203,7 @@ if __name__ == '__main__':
             measure_freq_cnt = 0
         else:
             measure_freq_cnt += 1
+        landmarks_num_history.append(len(landmarks_params))
                                 
         # GET POSES
         if HIST:
@@ -284,27 +287,52 @@ if __name__ == '__main__':
         
         plt.figure('time plot')
         plt.cla()        
-        data = []
-        labels = []
+        time_data = []
+        time_labels = []
         colors = []
         if HIST:
-            labels.append('hf')
-            data.append(hf_times)
+            time_labels.append('hf')
+            time_data.append(hf_times)
             colors.append('green')
         if AMCL:
-            labels.append('amcl')
-            data.append(amcl_times)
+            time_labels.append('amcl')
+            time_data.append(amcl_times)
             colors.append('blue')
         if SDL_HF:
-            labels.append('sdl_hf')
-            data.append(sdl_hf_times)
+            time_labels.append('sdl_hf')
+            time_data.append(sdl_hf_times)
             colors.append('magenta')
         if SDL_AMCL:
-            labels.append('sdl_amcl')
-            data.append(sdl_amcl_times)
+            time_labels.append('sdl_amcl')
+            time_data.append(sdl_amcl_times)
             colors.append('cyan')
         
-        time_plot(data, labels, colors)        
+        time_plot(time_data, time_labels, colors)        
         
         plt.pause(0.01)
+        
+    # GET AND SAVE DATA
+    folder_path = 'data/simple_circle_motion/'+datetime.datetime.now().strftime("%m-%d-%H-%M")
+    Path(folder_path).mkdir(parents=True, exist_ok=True)
+    
+    raw_poses = []
+    labels = []
+    raw_poses.append(np.array(real_history))
+    labels.append('gt')
+    if HIST:                
+        raw_poses.append(np.array(hf_history))
+        labels.append('hf')
+    if AMCL:
+        raw_poses.append(np.array(amcl_history))
+        labels.append('amcl')
+    if SDL_HF:
+        raw_poses.append(np.array(sdl_hf_history))
+        labels.append('sdl_hf')
+    if SDL_AMCL:
+        raw_poses.append(np.array(sdl_amcl_history))
+        labels.append('sdl_amcl')
+        
+    save_poses_raw(raw_poses, labels, folder_path+'/raw_poses.csv', landmarks_num_history)
+    
+    save_time_raw(time_data, time_labels, folder_path+'/raw_time.csv')
             

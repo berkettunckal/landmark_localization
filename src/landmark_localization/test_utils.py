@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from landmark_localization.landmark_localization_core import substract_angles
 import time
-
+import pandas as pd
 # =====================
 #   P L O T   D A T A
 # =====================
@@ -44,7 +44,6 @@ def time_plot(time_data, labels, colors):
 # =====================
 #   P L O T   S I M
 # =====================
-
 def plot_robot_pose(x, y, Y, color, label = None, radius = None):
     plt.plot(x, y, "o", color = 'black', zorder = 6)
     plt.plot(x, y, ".", color = color, zorder = 7)
@@ -150,7 +149,6 @@ def do_measure(test_params, landmarks):
 # ==============
 # V A R I O U S
 # ==============
-
 def get_pose_errors(data, real):
     d = np.array(data)
     r = np.array(real)
@@ -169,3 +167,29 @@ class tick_tocker(object):
         
     def end(self):
         return time.time() - self.start_t
+    
+# ==================
+# D A T A   S A V E
+# ==================
+def save_poses_raw(data, labels, full_name, landmarks = None):
+    data_unravel = []
+    labels_unravel = []
+    for i, d in enumerate(data):
+        data_unravel += [d[:,0], d[:,1], d[:,2]]
+        labels_unravel += [f'{labels[i]}_x', f'{labels[i]}_y', f'{labels[i]}_a']    
+    if not landmarks is None:
+        data_unravel.append(landmarks)
+        labels_unravel.append('l_num')
+    df = pd.DataFrame(np.array(data_unravel).T, columns = labels_unravel)
+    df.to_csv(full_name)
+
+def save_time_raw(data, labels, full_name):
+    data_unravel = []
+    labels_unravel = []
+    for i, d in enumerate(data):
+        for name, rd in d.items():
+            data_unravel.append(rd)
+            labels_unravel.append(f'{labels[i]}_{name}')    
+    df = pd.DataFrame(np.array(data_unravel).T, columns = labels_unravel)
+    df.to_csv(full_name)    
+    
