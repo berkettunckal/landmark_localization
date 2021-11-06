@@ -186,10 +186,10 @@ class AMCL2D(llc.LandmarkLocalization):
             
         if len(al) != 0:
             al = np.array(al, dtype = np.float64)        
-            mP = np.tile(self.P, [rl.shape[0], 1])
+            mP = np.tile(self.P, [al.shape[0], 1])
             mal = np.repeat(al, self.P.shape[0], axis = 0)
-            dx = mrl[:,0] - mP[:,0]
-            dy = mrl[:,1] - mP[:,1]
+            dx = mal[:,0] - mP[:,0]
+            dy = mal[:,1] - mP[:,1]
             a_glob = np.arctan2(-dy, -dx)
             a = llc.substract_angles(a_glob, mP[:,2])
             da = llc.substract_angles(a, mal[:,2])            

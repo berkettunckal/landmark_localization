@@ -5,24 +5,25 @@ import matplotlib.pyplot as plt
 from landmark_localization.landmark_localization_core import substract_angles
 import time
 import pandas as pd
+import yaml
 # =====================
 #   P L O T   D A T A
 # =====================
-def boxplot( data, ax, labels, colors, current = True, rotation  = 0):
+def boxplot( data, ax, labels, colors, current = True, rotation  = 0, showfliers = True):
     for i, datum in enumerate(data):
-        bp = ax.boxplot(datum, sym='.'+colors[i][0], positions = range(i,i+1), zorder = 1)
+        bp = ax.boxplot(datum, sym='.'+colors[i][0], positions = range(i,i+1), zorder = 1, showfliers = showfliers)
         plt.setp(bp['medians'], color=colors[i], linewidth=3)    
         if current and len(datum) > 0:
             plt.plot(i, datum[-1], "o", color = 'black', zorder = 2)
             plt.plot(i, datum[-1], ".", color = colors[i], zorder = 3)
     plt.xticks(range(0,len(data)), labels, rotation = rotation)    
     
-def moving_boxplot(data, labels, colors):
+def moving_boxplot(data, labels, colors, showfliers = True, current = True):
     data_labels = list(zip(data, labels, colors))            
     data_labels = sorted(data_labels, key=lambda item: np.median(item[0]) )                
     data_labels = list(zip(*data_labels))
     
-    boxplot(data_labels[0], plt.gca(), data_labels[1], data_labels[2])
+    boxplot(data_labels[0], plt.gca(), data_labels[1], data_labels[2], showfliers = showfliers, current = current)
     plt.grid()  
     plt.title("Pose error distribution")
     plt.ylabel('Pose error, m')
@@ -122,7 +123,7 @@ def do_motion(test_params):
     
     return motion_params 
 
-def do_measure(test_params, landmarks):
+def do_measure(test_params, landmarks, calc_r = True, calc_a = True):
     landmarks_params = []
     for landmark in landmarks:
         dx = test_params['robot']['x'] - landmark['x']
@@ -138,10 +139,12 @@ def do_measure(test_params, landmarks):
             landmark_param = {}
             landmark_param['x'] = landmark['x']
             landmark_param['y'] = landmark['y']
-            landmark_param['r'] = np.random.normal(r, test_params['sensor']['sr'])
-            landmark_param['sr'] = test_params['sensor']['sr']
-            landmark_param['a'] = np.random.normal(a, test_params['sensor']['sa'])
-            landmark_param['sa'] = test_params['sensor']['sa']                    
+            if calc_r:                
+                landmark_param['r'] = np.random.normal(r, test_params['sensor']['sr'])
+                landmark_param['sr'] = test_params['sensor']['sr']
+            if calc_a:
+                landmark_param['a'] = np.random.normal(a, test_params['sensor']['sa'])
+                landmark_param['sa'] = test_params['sensor']['sa']                    
             landmarks_params.append(landmark_param)
     return landmarks_params 
 
@@ -192,4 +195,8 @@ def save_time_raw(data, labels, full_name):
             labels_unravel.append(f'{labels[i]}_{name}')    
     df = pd.DataFrame(np.array(data_unravel).T, columns = labels_unravel)
     df.to_csv(full_name)    
+    
+def save_dict_params(params, full_name):
+    f = open(full_name, 'w')
+    yaml.dump(params, f)
     

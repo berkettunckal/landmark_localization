@@ -15,26 +15,58 @@ import copy
 import datetime
 from landmark_localization.test_utils import *
 from pathlib import Path
+import argparse
 
 if __name__ == '__main__':        
     
+    parser = argparse.ArgumentParser()
+    
+    parser.add_argument('-HF', dest="hf", default=False, const=True, action='store_const')
+    parser.add_argument('-AMCL', dest="amcl", default=False, const=True, action='store_const')
+    parser.add_argument('-SDL_HF', dest="sdl_hf", default=False, const=True, action='store_const')
+    parser.add_argument('-SDL_AMCL', dest="sdl_amcl", default=False, const=True, action='store_const')
+    
+    parser.add_argument('-PLOT_FIELD', dest="plot_field", default=False, const=True, action='store_const')
+    
+    parser.add_argument('-PLOT_STUFF', dest="plot_stuff", default=False, const=True, action='store_const')
+    
+    parser.add_argument('-can_measure_r', dest="can_measure_r", default=False, const=True, action='store_const')
+    parser.add_argument('-can_measure_a', dest="can_measure_a", default=False, const=True, action='store_const')
+    
+    parser.add_argument('--steps', dest="steps", default=300, type=int)
+    
+    parser.add_argument('--sub_dir', dest="sub_dir", default="", type=str)
+    
+    parser.add_argument('--np_min_amcl', dest="np_min_amcl", default=1000, type=int)
+    parser.add_argument('--np_max_amcl', dest="np_max_amcl", default=2000, type=int)
+    
+    parser.add_argument('--np_min_amcl_sdl', dest="np_min_amcl_sdl", default=100, type=int)
+    parser.add_argument('--np_max_amcl_sdl', dest="np_max_amcl_sdl", default=200, type=int)
+    
+    parser.add_argument('--n_landmarks', dest="n_landmarks", default=10, type=int)
+    
+    parser.add_argument('--dt', dest="dt", default=3, type=float)
+    
+    args = parser.parse_args()
+    
     test_params = {}
     
-    HIST = 1
-    AMCL = 1
-    SDL_HF = 1
-    SDL_AMCL = 1
+    HIST = args.hf
+    AMCL = args.amcl
+    SDL_HF = args.sdl_hf
+    SDL_AMCL = args.sdl_amcl
     
-    PLOT_FIELD = 0
+    PLOT_FIELD = args.plot_field
+    PLOT_STUFF = args.plot_stuff
     
     test_params['sim'] = {}
     test_params['sim']['dt'] = 3
     test_params['sim']['measure_freq'] = 0
-    test_params['sim']['steps'] = 10
+    test_params['sim']['steps'] = args.steps
     test_params['sim']['step'] = 0
     
     test_params['field'] = {}
-    test_params['field']['N_landmarks'] = 10
+    test_params['field']['N_landmarks'] = args.n_landmarks
     test_params['field']['x_max'] = 10
     test_params['field']['y_max'] = 12
     
@@ -52,6 +84,9 @@ if __name__ == '__main__':
     test_params['sensor']['max_a'] = np.pi
     test_params['sensor']['sr'] = 0.1
     test_params['sensor']['sa'] = 0.01
+    
+    test_params['sensor']['can_measure_r'] = args.can_measure_r
+    test_params['sensor']['can_measure_a'] = args.can_measure_a
     
     landmarks = generate_landmarks(test_params)        
     #TODO: read/write params from file    
@@ -91,8 +126,8 @@ if __name__ == '__main__':
     hf_times = copy.deepcopy(times)
     
     amcl_params = {}
-    amcl_params['NP'] = 1000
-    amcl_params['NPmax'] = 5000
+    amcl_params['NP'] = args.np_min_amcl
+    amcl_params['NPmax'] = args.np_max_amcl
     amcl_params['alpha_slow'] = 0.05
     amcl_params['alpha_fast'] = 0.1
     amcl_params['dims'] = {}
@@ -144,8 +179,8 @@ if __name__ == '__main__':
     sdl_amcl_params['inner_method'] = 'amcl'
     sdl_amcl_params['inner_method_params'] = copy.deepcopy(amcl_params)
     # amcl params overwrite
-    sdl_amcl_params['inner_method_params']['NP'] = 10
-    sdl_amcl_params['inner_method_params']['NPmax'] = 20
+    sdl_amcl_params['inner_method_params']['NP'] = args.np_min_amcl_sdl
+    sdl_amcl_params['inner_method_params']['NPmax'] = args.np_max_amcl_sdl
     
     sdl_amcl = SDL2D(sdl_amcl_params)
     sdl_amcl_history = []
@@ -183,7 +218,7 @@ if __name__ == '__main__':
         # MEASURE
         landmarks_params = []
         if measure_freq_cnt == test_params['sim']['measure_freq'] or test_params['sim']['step'] == 1:            
-            landmarks_params = do_measure(test_params, landmarks)
+            landmarks_params = do_measure(test_params, landmarks, calc_r = test_params['sensor']['can_measure_r'], calc_a = test_params['sensor']['can_measure_a'])
             if HIST:
                 timer.start()
                 hf.landmarks_update(landmarks_params)
@@ -260,59 +295,60 @@ if __name__ == '__main__':
             plt.grid()
             plt.pause(0.01)
         
-        plt.figure('boxplot')
-        plt.cla()        
-        data = []
-        labels = []
-        colors = []
-        if HIST:
-            data.append(get_pose_errors(hf_history, real_history))
-            labels.append('hf')
-            colors.append('green')
-        if AMCL:
-            data.append(get_pose_errors(amcl_history, real_history))
-            labels.append('amcl')
-            colors.append('blue')
-        if SDL_HF:
-            data.append(get_pose_errors(sdl_hf_history, real_history))
-            labels.append('sdl+hf')
-            colors.append('magenta')
-        if SDL_AMCL:
-            data.append(get_pose_errors(sdl_amcl_history, real_history))
-            labels.append('sdl+amcl')        
-            colors.append('cyan')
+        if PLOT_STUFF or (test_params['sim']['step'] == test_params['sim']['steps']):
+            plt.figure('boxplot')
+            plt.cla()        
+            data = []
+            labels = []
+            colors = []
+            if HIST:
+                data.append(get_pose_errors(hf_history, real_history))
+                labels.append('hf')
+                colors.append('green')
+            if AMCL:
+                data.append(get_pose_errors(amcl_history, real_history))
+                labels.append('amcl')
+                colors.append('blue')
+            if SDL_HF:
+                data.append(get_pose_errors(sdl_hf_history, real_history))
+                labels.append('sdl+hf')
+                colors.append('magenta')
+            if SDL_AMCL:
+                data.append(get_pose_errors(sdl_amcl_history, real_history))
+                labels.append('sdl+amcl')        
+                colors.append('cyan')
 
-        moving_boxplot(data, labels, colors)        
-        plt.pause(0.01)
-        
-        plt.figure('time plot')
-        plt.cla()        
-        time_data = []
-        time_labels = []
-        colors = []
-        if HIST:
-            time_labels.append('hf')
-            time_data.append(hf_times)
-            colors.append('green')
-        if AMCL:
-            time_labels.append('amcl')
-            time_data.append(amcl_times)
-            colors.append('blue')
-        if SDL_HF:
-            time_labels.append('sdl_hf')
-            time_data.append(sdl_hf_times)
-            colors.append('magenta')
-        if SDL_AMCL:
-            time_labels.append('sdl_amcl')
-            time_data.append(sdl_amcl_times)
-            colors.append('cyan')
-        
-        time_plot(time_data, time_labels, colors)        
-        
-        plt.pause(0.01)
+            moving_boxplot(data, labels, colors, showfliers = False, current = (test_params['sim']['step'] < test_params['sim']['steps']))        
+            plt.pause(0.01)
+            
+            plt.figure('time plot')
+            plt.cla()        
+            time_data = []
+            time_labels = []
+            colors = []
+            if HIST:
+                time_labels.append('hf')
+                time_data.append(hf_times)
+                colors.append('green')
+            if AMCL:
+                time_labels.append('amcl')
+                time_data.append(amcl_times)
+                colors.append('blue')
+            if SDL_HF:
+                time_labels.append('sdl_hf')
+                time_data.append(sdl_hf_times)
+                colors.append('magenta')
+            if SDL_AMCL:
+                time_labels.append('sdl_amcl')
+                time_data.append(sdl_amcl_times)
+                colors.append('cyan')
+            
+            time_plot(time_data, time_labels, colors)        
+            
+            plt.pause(0.01)
         
     # GET AND SAVE DATA
-    folder_path = 'data/simple_circle_motion/'+datetime.datetime.now().strftime("%m-%d-%H-%M")
+    folder_path = 'data/simple_circle_motion/'+args.sub_dir+'/'+datetime.datetime.now().strftime("%m-%d-%H-%M")
     Path(folder_path).mkdir(parents=True, exist_ok=True)
     
     raw_poses = []
@@ -322,17 +358,30 @@ if __name__ == '__main__':
     if HIST:                
         raw_poses.append(np.array(hf_history))
         labels.append('hf')
+        save_dict_params(hf_params, folder_path + '/hf_params.yaml')
     if AMCL:
         raw_poses.append(np.array(amcl_history))
         labels.append('amcl')
+        save_dict_params(amcl_params, folder_path + '/amcl_params.yaml')
     if SDL_HF:
         raw_poses.append(np.array(sdl_hf_history))
         labels.append('sdl_hf')
+        save_dict_params(sdl_hf_params, folder_path + '/sdl_hf_params.yaml')
     if SDL_AMCL:
         raw_poses.append(np.array(sdl_amcl_history))
         labels.append('sdl_amcl')
+        save_dict_params(sdl_amcl_params, folder_path + '/sdl_amcl_params.yaml')
         
-    save_poses_raw(raw_poses, labels, folder_path+'/raw_poses.csv', landmarks_num_history)
-    
+    save_poses_raw(raw_poses, labels, folder_path+'/raw_poses.csv', landmarks_num_history)    
     save_time_raw(time_data, time_labels, folder_path+'/raw_time.csv')
-            
+    
+    plt.figure('time plot')
+    plt.savefig(folder_path + '/time_plot.png')
+    plt.figure('boxplot')
+    plt.savefig(folder_path + '/pose_error.png')
+    
+    save_dict_params(test_params, folder_path + '/test_params.yaml')
+    save_dict_params(landmarks, folder_path + '/landmarks.yaml')
+        
+    
+    
