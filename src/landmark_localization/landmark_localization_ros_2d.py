@@ -38,6 +38,7 @@ class LandmarkLocalizationRos2D(object):
         self.last_landmark_msg = None
         self.last_odom_msg = None
         
+        self.eod_id_value = rospy.get_param('~eod_id_value')
         self.used_eod_ids = rospy.get_param('~used_eod_ids', [])
         self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
         
@@ -49,6 +50,8 @@ class LandmarkLocalizationRos2D(object):
         
         self.max_time_lag = rospy.get_param('~max_time_lag', 0.5)
         self.publish_tf = rospy.get_param('~publish_tf', True)
+        
+        self.add_tf_time = rospy.Duration(rospy.get_param('~add_tf_time', 0))
         
         self.odom_frame = rospy.get_param('~odom_frame', 'odom')
         self.base_frame = rospy.get_param('~base_frame', 'base_link')
@@ -105,7 +108,7 @@ class LandmarkLocalizationRos2D(object):
         sub_ids - list of sub_ids should be used for landmark data, if empty all is used
         transform - 4x4 matrix of required transformation (commonly cam_frame -> base_link) 
     '''
-    def eod_msg_to_landmarks_params(self, msg, ids = [], sub_ids = []):
+    def eod_msg_to_landmarks_params(self, msg, id_value, ids = [], sub_ids = []):
         if self.landmark_transform is None:
             try:    
                 bl_cam_tf = self.tf_buffer.lookup_transform(self.base_frame,
@@ -126,10 +129,11 @@ class LandmarkLocalizationRos2D(object):
         landmarks_params = []
         for so in msg.objects:
             if len(ids) == 0 or so.type_id in ids or so.type_names in ids:
-                if so.extracted_info[0].sub_id in self.landmark_map:
+                id_dict = dict(zip(so.extracted_info.keys, so.extracted_info.values))                
+                if id_value in id_dict and int(id_dict[id_value]) in self.landmark_map:
                     landmark_param = {}
-                    landmark_param['x'] = self.landmark_map[so.extracted_info[0].sub_id]['x']
-                    landmark_param['y'] = self.landmark_map[so.extracted_info[0].sub_id]['y']
+                    landmark_param['x'] = self.landmark_map[int(id_dict[id_value])]['x']
+                    landmark_param['y'] = self.landmark_map[int(id_dict[id_value])]['y']
                     
                     vector_src = np.array([[so.transform.translation.x, so.transform.translation.y, so.transform.translation.z, 0]]).T                                        
                     vector_dst = np.dot(self.landmark_transform, vector_src)                    
@@ -143,11 +147,12 @@ class LandmarkLocalizationRos2D(object):
                     landmarks_params.append(landmark_param)
         return landmarks_params                
         
-    def get_id_list_from_eod_msg(self, msg):
+    def get_id_list_from_eod_msg(self, msg, id_value):
         ids = []
         for so in msg.objects:
-            #if so.type_id in 
-            ids.append(so.extracted_info[0].sub_id)
+            id_dict = dict(zip(so.extracted_info.keys, so.extracted_info.values))            
+            if id_value in id_dict:
+                ids.append(int(id_dict[id_value]))
         return ids                    
     
     def odom_cb(self, msg):
@@ -167,11 +172,11 @@ class LandmarkLocalizationRos2D(object):
         id_list = []
         if not self.last_landmark_msg is None:
             if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
-                lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.used_eod_ids, self.used_map_ids)
+                lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
                 if not lp is None:
                     self.ll_method.landmarks_update(lp)
                     if self.visualizate_map:
-                        id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg)
+                        id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg, self.eod_id_value)
                         self.last_landmark_msg = None
             else:
                 rospy.logwarn("[{}] skipped landmark data due to old timestamp.".format(rospy.get_name()))
@@ -196,16 +201,17 @@ class LandmarkLocalizationRos2D(object):
                 self.output_pubs[df].publish(ll_utils.robot_pose_to_odometry(robot_pose, cov, self.map_frame, self.odom_frame, [0,0], []))       
                 
         if self.publish_tf:
-            self.do_publish_tf(robot_pose)
+            self.do_publish_tf(robot_pose, current_time)
             
         if self.visualizate_output:
             self.visualizate()
                     
         if self.visualizate_map:
+            #print(id_list)
             self.map_pub.publish(self.landmark_map.return_as_marker_array(current_time, self.map_frame, id_list))
                         
     # broadcasts odom from map as correction to new base position
-    def do_publish_tf(self, robot_pose):
+    def do_publish_tf(self, robot_pose, ts = None):
         try:    
             odom_bl_tf = self.tf_buffer.lookup_transform(self.odom_frame, 
                                                          self.base_frame,
@@ -231,7 +237,9 @@ class LandmarkLocalizationRos2D(object):
         
         tfs = TransformStamped()
         
-        tfs.header.stamp = rospy.Time.now()
+        if ts is None:
+            ts = rospy.Time.now()
+        tfs.header.stamp = ts + self.add_tf_time
         tfs.header.frame_id = self.map_frame
         tfs.child_frame_id = self.odom_frame
         tfs.transform.translation.x = trans[0]
