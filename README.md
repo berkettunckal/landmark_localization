@@ -6,7 +6,8 @@ ROS package for robot localization by landmarks.
 
 ## Included methods:
 ### 2D localization: 
- - [x] Histogram filter (HF)
+ - [x] Basic Histogram filter (HF)
+ - [ ] Density Trees Histogram Filter
  - [x] Augmented Monte Carlo Localization (AMCL)
  - [x] Sub Definite Localiztion (SDL) with inner HF
  - [x] Sub Definite Localiztion (SDL) with inner AMCL
@@ -19,24 +20,18 @@ Methods represented in [Thrun, Sebastian, Burgard, Wolfram and Fox, Dieter. Prob
 ##### 1.1.1.1. Implementation [ll_hf2d](src/landmark_localization/ll_hf2d.py)
 Parameters dictionary can be imported from yaml-file:
 ```yaml
-dims:
- x: 
-  d_res:
-  min:
-  max:
- y: 
-  d_res:
-  min:
-  max:
- Y:
-  d_res:
-  min:
-  max:
-calc_type: 'ADDITION' # 'MULTIPLICATION'
-yaw_discount: 1
-prev_step_weight: 0.5
-motion_update_type: 'BLUR_SHIFT' # 'PREV_COV'
-pose_calc_type: 'MAX' # 'SUM'
+dims: # filter area
+ x: # dimention description
+  d_res: # desired dimention resolution, final resolution may be different but not more
+  min: # min dimetion value
+  max: # max dimention value
+ y: # same as x
+ Y: # same as x and y
+calc_type: 'ADDITION' # or can be 'MULTIPLICATION' - how to deal with probabilities 
+yaw_discount: 1 # for discounting angle influence
+prev_step_weight: 0.5 # how mush previous state is influencing on new one
+motion_update_type: 'BLUR_SHIFT' # or can be 'PREV_COV' - model of previous pose integration
+pose_calc_type: 'MAX' # or can be 'SUM' - type of calculating final robot pose
 ```
 ##### 1.1.1.2. ROS-wrapper [ll_hf2d_ros](src/landmark_localization/ll_hf2d_ros.py)
 __Parameters:__
@@ -50,23 +45,16 @@ Parameters dictionary can be imported from yaml-file:
 ```yaml
 dims:
  x: 
-  d_res:
   min:
   max:
- y: 
-  d_res:
-  min:
-  max:
- Y:
-  d_res:
-  min:
-  max:
-NP: 100
-NPmax: 100
-calc_type: "ADDITION" # "MULTIPLICATION"
-alpha: [1,1,1,1,1,1]
-alpha_slow: 0.0001
-alpha_fast: 0.1
+ y: # same as x 
+ Y: # same as x and y
+NP: 100 # base particle number
+NPmax: 100 # maximal number of particles
+calc_type: "ADDITION" # or can be "MULTIPLICATION" - how to deal with probabilities 
+alpha: [1,1,1,1,1,1] # motion parameters
+alpha_slow: 0.0001 # 
+alpha_fast: 0.1 #
 ```
 ##### 1.1.1.2. ROS-wrapper [ll_amcl2d_ros](src/landmark_localization/ll_amcl2d_ros.py)
 __Parameters:__
