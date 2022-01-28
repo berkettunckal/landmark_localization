@@ -93,5 +93,6 @@ __Published topics:__
 - __~amcl_particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if AMCL is choosen as inner method
 - __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method
 
+## 2. Common ROS-interface for all methods
 
 
