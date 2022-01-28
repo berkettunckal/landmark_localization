@@ -12,12 +12,14 @@ ROS package for robot localization by landmarks.
  - [x] Sub Definite Localiztion (SDL) with inner AMCL
  - [ ] Extended Kalman Filter (EKF)
 
-## Methods Description
+## 1. Methods Description
+### 1.1. Pure probabilistic methods
+Methods represented in [Thrun, Sebastian, Burgard, Wolfram and Fox, Dieter. Probabilistic robotics. Cambridge, Mass.: MIT Press, 2005.](https://docs.ufpr.br/~danielsantos/ProbabilisticRobotics.pdf)
+#### 1.1.1. Histogram filter
 
-### Histogram filter
+#### 1.1.2. AMCL
 
-### AMCL
-
+### 1.2. Sub Definite Localization Addons on probabilistic methods
 ### SDL+HF
 
 ### SDL+AMCL
