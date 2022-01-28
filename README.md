@@ -1,7 +1,5 @@
 # landmark_localization
 
-__== Project in early stage of development==__
-
 ROS package for robot localization by landmarks.
 
 ## Included methods:
@@ -91,8 +89,32 @@ __Parameters:__
 __Published topics:__
 - __~sd_areas__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) subdef variables visualization
 - __~amcl_particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if AMCL is choosen as inner method
-- __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method
+- __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method  
+
 
 ## 2. Common ROS-interface for all methods
+[Source](src/landmark_localization/landmark_localization_ros_2d.py)  
+This interface is worked with Extended Object Detection [(EOD)](https://github.com/Extended-Object-Detection-ROS/extended_object_detection) package as landmark detector.
+__Parameters:__
+ - __~map_path__ (string, must be provided) path to map-file with landmarks description
+ - __~landmark_r_sigma__ (float, default: 0.1 [m]) landmark distance estimate error
+ - __~landmark_a_sigma__ (float, default: 0.1 [rad]) landmark angle estimate error
+ - __~eod_id_value__ (string, must be provided) key of `EOD's extracted info` for landmarks id
+ - __~used_eod_ids__ (list, default: []) if empty all `EOD's type_id` is used, othervise only specified
+ - __~used_map_ids__ (list, default: every map id) can be used to limit map landmarks
+ - __~max_time_lag__ (float, default: 0.5 [sec]) drop EOD msg if its `stamp + lag` older than `now`
+ - __~publish_tf__ (bool, default: true) if true will publish transform between `map_frame` and `odom_frame`
+ - __~add_tf_time__ (float, default: 0) tf transform stamp addition value
+ - __~odom_frame__ (string, default: 'odom') odometry tf frame name
+ - __~base_frame__ (string, default: 'base_link') robot base tf frame name
+ - __~map_frame__ (string, default: 'map') map tf frame name
+ - __~output_data_format__ (list of strings, default: ['ps']) choose which format of robot pose is use for topic output
+  - 
+ - __~visualizate_output__
 
+__Published topics:__
+ - __~__
+
+__Subscribed topics:__
+ - __~__
 
