@@ -120,7 +120,7 @@ __Parameters:__
  - __~visualizate_map__ (bool, default: True) will pubish map as marker array
 
 __Published topics:__
- - __~robot_pose_{}__ (various) robot pose, see `output_data_format` param for description
+ - __~robot_pose_<>__ (various) robot pose, see `output_data_format` param for description
  - __~landmark_map__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) landmark map visualization
  
 __Subscribed topics:__
