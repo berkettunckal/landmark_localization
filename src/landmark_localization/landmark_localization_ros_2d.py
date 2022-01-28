@@ -43,7 +43,7 @@ class LandmarkLocalizationRos2D(object):
         self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
         
         self.landmark_transform = None
-        self.landmark_target_frame = rospy.get_param('~landmark_target_frame', None)
+        self.landmark_target_frame = rospy.get_param('~landmark_target_frame', None) # WHAT IT IS FOR?
         if self.landmark_target_frame is None:
             self.landmark_transform = np.eye(4)
             
