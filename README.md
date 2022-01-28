@@ -128,7 +128,7 @@ This interface is worked with Extended Object Detection [(EOD)](https://github.c
  - __~eod__ ([extended_object_detection/SimpleObjectArray](https://github.com/Extended-Object-Detection-ROS/wiki_english/wiki/ros_msg#7-simpleobjectarray)) detected landmarks
 
 ### 2.4. TF
-If param `publish_tf` is True, than transform `odom_frame` --> `base_frame` is required, and transfrom 'map_frame' --> 'odom_frame' is broadcasted.
+If param `publish_tf` is True, than transform `odom_frame` --> `base_frame` is required, and transfrom `map_frame` --> `odom_frame` is broadcasted.
 
 ## 3. Map format
 It is rather simple. ID of landmark can be integer or string and mandatory `x`, `y` keys. 
