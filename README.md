@@ -109,7 +109,8 @@ __Parameters:__
  - __~base_frame__ (string, default: 'base_link') robot base tf frame name
  - __~map_frame__ (string, default: 'map') map tf frame name
  - __~output_data_format__ (list of strings, default: ['ps']) choose which format of robot pose is use for topic output
-  - 
+   - 'p' - [geometry_msgs/Pose](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/Pose.html) 
+   - 'ps' - [geometry_msgs/PoseStamped](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseStamped.html) 
  - __~visualizate_output__
 
 __Published topics:__
