@@ -40,7 +40,7 @@ __Parameters:__
 __Published topics:__
  - __~grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization via costmap, works well when resolutions of x and y are same
 #### 1.1.2. AMCL
-##### 1.1.1.1. Implementation [ll_amcl2d](src/landmark_localization/ll_amcl2d.py)
+##### 1.1.2.1. Implementation [ll_amcl2d](src/landmark_localization/ll_amcl2d.py)
 Parameters dictionary can be imported from yaml-file:
 ```yaml
 dims:
@@ -56,7 +56,7 @@ alpha: [1,1,1,1,1,1] # motion parameters
 alpha_slow: 0.0001 # 
 alpha_fast: 0.1 #
 ```
-##### 1.1.1.2. ROS-wrapper [ll_amcl2d_ros](src/landmark_localization/ll_amcl2d_ros.py)
+##### 1.1.2.2. ROS-wrapper [ll_amcl2d_ros](src/landmark_localization/ll_amcl2d_ros.py)
 __Parameters:__
 - __~amcl_params__ (dict, {}) method parameters as described below
 - __~publish_debug__ (bool, false) if true publishes `w_avg`, `w_slow` and `w_fast`.  
@@ -67,9 +67,31 @@ __Published topics:__
 My own ideas of usage of Sub Definite Models in robot localization task to decrece search area for probabilistic methods.
 Usage of SDL with HF is described in [Moscowsky, Anton. (2021). Subdefinite Computations for Reducing the Search Space in Mobile Robot Localization Task. 10.1007/978-3-030-86855-0_13.](https://www.researchgate.net/publication/355050502_Subdefinite_Computations_for_Reducing_the_Search_Space_in_Mobile_Robot_Localization_Task)
 #### 1.2.1. Implementation [ll_sdl2d](src/landmark_localization/ll_sdl2d.py)
+Parameters dictionary can be imported from yaml-file:
+```yaml
+dims:
+ x: 
+  min:
+  max:
+ y: # same as x 
+ Y: # same as x and y
+var_acc: 3 # for comparing variables when do subdef main process
+stop_acc: 0.01 # 
+verbose: true # print subdef process
+max_steps: 100 # treshold of subdef steps
+max_mc_rolls: 64 # max steps of MonteCarlo assigment function
+use_correctness_check: true # do or not checking process on start of each iteration
+inner_method: # 'hf' or 'amcl'
+inner_method_params: {} # dict as described below
+```
 #### 1.2.2. ROS-wrapper [ll_sdl2d_ros](src/landmark_localization/ll_sdl2d_ros.py)
+__Parameters:__
+- __~sdl_params__ (dict, {}) method parameters as described below
 
-
+__Published topics:__
+- __~sd_areas__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) subdef variables visualization
+- __~amcl_particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if AMCL is choosen as inner method
+- __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method
 
 
 
