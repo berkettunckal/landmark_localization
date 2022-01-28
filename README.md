@@ -130,3 +130,11 @@ This interface is worked with Extended Object Detection [(EOD)](https://github.c
 ### 2.4. TF
 If param `publish_tf` is True, than transform `odom_frame` --> `base_frame` is required, and transfrom 'map_frame' --> 'odom_frame' is broadcasted.
 
+## 3. Map format
+
+## 4. ROS-free tests
+Located in [tests/](tests). This test are ROS-free, however to run them, package must be build. Test are being developed to coverage common localization scenarious in a simple environment. Online accuracy checking comes with them.
+### 4.1. simple_circle_motion.py
+### 4.2. zones_of_emptyness_circle_motion.py
+### 4.3. stational_teleport.py
+
