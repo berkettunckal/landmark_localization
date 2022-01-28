@@ -36,7 +36,7 @@ __Parameters:__
  - __~hf_params__ (dict, {}) method parameters as described below  
 
 __Published topics:__
- - __~grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization via costmap, works well when resolutions of x and y are same
+ - __~grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization via costmap, if `visualizate_output` param is true. Works well when resolutions of x and y are same
 #### 1.1.2. AMCL
 ##### 1.1.2.1. Implementation [ll_amcl2d](src/landmark_localization/ll_amcl2d.py)
 Parameters dictionary can be imported from yaml-file:
@@ -60,7 +60,7 @@ __Parameters:__
 - __~publish_debug__ (bool, false) if true publishes `w_avg`, `w_slow` and `w_fast`.  
 
 __Published topics:__
- - __~particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization
+ - __~particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if `visualizate_output` param is true
 ### 1.2. Sub Definite Localization addons on probabilistic methods
 My own ideas of usage of Sub Definite Models in robot localization task to decrece search area for probabilistic methods.
 Usage of SDL with HF is described in [Moscowsky, Anton. (2021). Subdefinite Computations for Reducing the Search Space in Mobile Robot Localization Task. 10.1007/978-3-030-86855-0_13.](https://www.researchgate.net/publication/355050502_Subdefinite_Computations_for_Reducing_the_Search_Space_in_Mobile_Robot_Localization_Task)
@@ -87,9 +87,9 @@ __Parameters:__
 - __~sdl_params__ (dict, {}) method parameters as described below
 
 __Published topics:__
-- __~sd_areas__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) subdef variables visualization
-- __~amcl_particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if AMCL is choosen as inner method
-- __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method  
+- __~sd_areas__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) subdef variables visualization, if `visualizate_output` param is true
+- __~amcl_particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization, if AMCL is choosen as inner method, if `visualizate_output` param is true
+- __~hf_grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization if HF is choosen as inner method, if `visualizate_output` param is true
 
 
 ## 2. Common ROS-interface for all methods
@@ -111,11 +111,19 @@ __Parameters:__
  - __~output_data_format__ (list of strings, default: ['ps']) choose which format of robot pose is use for topic output
    - 'p' - [geometry_msgs/Pose](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/Pose.html) 
    - 'ps' - [geometry_msgs/PoseStamped](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseStamped.html) 
- - __~visualizate_output__
+   - 'pc' - [geometry_msgs/PoseWithCovariance](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovariance.html) 
+   - 'pcs' - [geometry_msgs/PoseWithCovarianceStamped](http://docs.ros.org/en/lunar/api/geometry_msgs/html/msg/PoseWithCovarianceStamped.html) 
+   - 'o' - [nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)  
+ 
+ Any combination of this can be used simultaneously, topics will be named like '~robot_pose_ps'.  
+ - __~visualizate_output__ (bool, default: True) if true, output will be visualisated, for each method in its way, see above
+ - __~visualizate_map__ (bool, default: True) will pubish map as marker array
 
 __Published topics:__
- - __~__
-
+ - __~robot_pose_{}__ (various) robot pose, see `output_data_format` param for description
+ - __~landmark_map__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) landmark map visualization
+ 
 __Subscribed topics:__
- - __~__
+ - __~odom__ ([nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)) robot odometry
+ - __~eod__ ([extended_object_detection/SimpleObjectArray](https://github.com/Extended-Object-Detection-ROS/wiki_english/wiki/ros_msg#7-simpleobjectarray)) detected landmarks
 
