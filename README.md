@@ -131,6 +131,16 @@ This interface is worked with Extended Object Detection [(EOD)](https://github.c
 If param `publish_tf` is True, than transform `odom_frame` --> `base_frame` is required, and transfrom 'map_frame' --> 'odom_frame' is broadcasted.
 
 ## 3. Map format
+It is rather simple. ID of landmark can be integer or string and mandatory `x`, `y` keys. 
+```yaml
+1:
+ x: 1
+ y: 0
+'two':
+ x: 0
+ y: 1
+```
+Also can include `z` and `Y` parameters (used in visualization).
 
 ## 4. ROS-free tests
 Located in [tests/](tests). This test are ROS-free, however to run them, package must be build. Test are being developed to coverage common localization scenarious in a simple environment. Online accuracy checking comes with them.
