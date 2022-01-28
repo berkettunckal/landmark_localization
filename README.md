@@ -14,12 +14,13 @@ ROS package for robot localization by landmarks.
 
 ## 1. Methods Description
 ### 1.1. Pure probabilistic methods
-Methods represented in [Thrun, Sebastian, Burgard, Wolfram and Fox, Dieter. Probabilistic robotics. Cambridge, Mass.: MIT Press, 2005.](https://docs.ufpr.br/~danielsantos/ProbabilisticRobotics.pdf)
+Methods represented in [Thrun, Sebastian, Burgard, Wolfram and Fox, Dieter. Probabilistic robotics. Cambridge, Mass.: MIT Press, 2005.](https://docs.ufpr.br/~danielsantos/ProbabilisticRobotics.pdf).
 #### 1.1.1. Histogram filter
 
 #### 1.1.2. AMCL
 
-### 1.2. Sub Definite Localization Addons on probabilistic methods
+### 1.2. Sub Definite Localization addons on probabilistic methods
+My own ideas of usage of Sub Definite Models in robot localization task to decrece search area for probabilistic methods.
 ### SDL+HF
 
 ### SDL+AMCL
