@@ -1,4 +1,4 @@
-# landmark_localization
+# Landmark Localization
 
 ROS package for robot localization by landmarks.
 
