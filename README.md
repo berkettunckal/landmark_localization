@@ -17,7 +17,7 @@ ROS package for robot localization by landmarks.
 Methods represented in [Thrun, Sebastian, Burgard, Wolfram and Fox, Dieter. Probabilistic robotics. Cambridge, Mass.: MIT Press, 2005.](https://docs.ufpr.br/~danielsantos/ProbabilisticRobotics.pdf).
 #### 1.1.1. Histogram filter
 ##### 1.1.1.1. Implementation [ll_hf2d](src/landmark_localization/ll_hf2d.py)
-Parameters dictionary can be imported from yaml-file.
+Parameters dictionary can be imported from yaml-file:
 ```yaml
 dims:
  x: 
@@ -43,6 +43,28 @@ __Parameters:__
  - __~hf_params__ (dict, {}) can be loaded from yaml
 #### 1.1.2. AMCL
 ##### 1.1.1.1. Implementation [ll_amcl2d](src/landmark_localization/ll_amcl2d.py)
+Parameters dictionary can be imported from yaml-file:
+```yaml
+dims:
+ x: 
+  d_res:
+  min:
+  max:
+ y: 
+  d_res:
+  min:
+  max:
+ Y:
+  d_res:
+  min:
+  max:
+NP: 100
+NPmax: 100
+calc_type: "ADDITION" # "MULTIPLICATION"
+alpha: [1,1,1,1,1,1]
+alpha_slow: 0.0001
+alpha_fast: 0.1
+```
 ##### 1.1.1.2. ROS-wrapper [ll_amcl2d_ros](src/landmark_localization/ll_amcl2d_ros.py)
 ### 1.2. Sub Definite Localization addons on probabilistic methods
 My own ideas of usage of Sub Definite Models in robot localization task to decrece search area for probabilistic methods.
