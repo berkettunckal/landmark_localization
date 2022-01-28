@@ -95,7 +95,7 @@ __Published topics:__
 ## 2. Common ROS-interface for all methods
 [Source](src/landmark_localization/landmark_localization_ros_2d.py)  
 This interface is worked with Extended Object Detection [(EOD)](https://github.com/Extended-Object-Detection-ROS/extended_object_detection) package as landmark detector.
-__Parameters:__
+### 2.1. Parameters
  - __~map_path__ (string, must be provided) path to map-file with landmarks description
  - __~landmark_r_sigma__ (float, default: 0.1 [m]) landmark distance estimate error
  - __~landmark_a_sigma__ (float, default: 0.1 [rad]) landmark angle estimate error
@@ -119,11 +119,14 @@ __Parameters:__
  - __~visualizate_output__ (bool, default: True) if true, output will be visualisated, for each method in its way, see above
  - __~visualizate_map__ (bool, default: True) will pubish map as marker array
 
-__Published topics:__
+### 2.2. Published topics
  - __~robot_pose\_\{\}__ (various) robot pose, see `output_data_format` param for description
  - __~landmark_map__ ([visualization_msgs/MarkerArray](http://docs.ros.org/en/noetic/api/visualization_msgs/html/msg/MarkerArray.html)) landmark map visualization
  
-__Subscribed topics:__
+### 2.3. Subscribed topics
  - __~odom__ ([nav_msgs/Odometry](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/Odometry.html)) robot odometry
  - __~eod__ ([extended_object_detection/SimpleObjectArray](https://github.com/Extended-Object-Detection-ROS/wiki_english/wiki/ros_msg#7-simpleobjectarray)) detected landmarks
+
+### 2.4. TF
+If param `publish_tf` is True, than transform `odom_frame` --> `base_frame` is required, and transfrom 'map_frame' --> 'odom_frame' is broadcasted.
 
