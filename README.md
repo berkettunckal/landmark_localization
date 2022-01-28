@@ -41,6 +41,7 @@ pose_calc_type: 'MAX' # 'SUM'
 ##### 1.1.1.2. ROS-wrapper [ll_hf2d_ros](src/landmark_localization/ll_hf2d_ros.py)
 __Parameters:__
  - __~hf_params__ (dict, {}) method parameters as described below  
+
 __Published topics:__
  - __~grid__ ([nav_msgs/OccupancyGrid](http://docs.ros.org/en/noetic/api/nav_msgs/html/msg/OccupancyGrid.html)) grid visualization via costmap, works well when resolutions of x and y are same
 #### 1.1.2. AMCL
@@ -71,6 +72,7 @@ alpha_fast: 0.1
 __Parameters:__
 - __~amcl_params__ (dict, {}) method parameters as described below
 - __~publish_debug__ (bool, false) if true publishes `w_avg`, `w_slow` and `w_fast`.  
+
 __Published topics:__
  - __~particles__ ([geometry_msgs/PoseArray](http://docs.ros.org/en/noetic/api/geometry_msgs/html/msg/PoseArray.html)) particles visualization
 ### 1.2. Sub Definite Localization addons on probabilistic methods
