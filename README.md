@@ -82,7 +82,7 @@ max_steps: 100 # treshold of subdef steps
 max_mc_rolls: 64 # max steps of MonteCarlo assigment function
 use_correctness_check: true # do or not checking process on start of each iteration
 inner_method: # 'hf' or 'amcl'
-inner_method_params: {} # dict as described below
+inner_method_params: {} # dict as described below for AMCL or HF
 ```
 #### 1.2.2. ROS-wrapper [ll_sdl2d_ros](src/landmark_localization/ll_sdl2d_ros.py)
 __Parameters:__
