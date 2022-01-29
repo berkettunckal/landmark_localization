@@ -64,7 +64,12 @@ __Published topics:__
 ### 1.2. Sub Definite Localization addons on probabilistic methods
 My own ideas of usage of Sub Definite Models in robot localization task to decrece search area for probabilistic methods.
 Usage of SDL with HF is described in [Moscowsky, Anton. (2021). Subdefinite Computations for Reducing the Search Space in Mobile Robot Localization Task. 10.1007/978-3-030-86855-0_13.](https://www.researchgate.net/publication/355050502_Subdefinite_Computations_for_Reducing_the_Search_Space_in_Mobile_Robot_Localization_Task)
-#### 1.2.1. Implementation [ll_sdl2d](src/landmark_localization/ll_sdl2d.py)
+#### 1.2.1. Subdef calculations
+I reimplement all needed subdefinite calculation.
+ - [sub_def_variable.py](src/landmark_localization/sub_def_variable.py) - code for handling interval subdefinite variable
+ - [sub_def_multi_interval.py](src/landmark_localization/sub_def_multi_interval.py) - code for handling multi-interval subdefinite variable
+ - [sub_def_model.py](src/landmark_localization/sub_def_model.py) - code implements subdefinite computational model
+#### 1.2.2. Implementation [ll_sdl2d](src/landmark_localization/ll_sdl2d.py)
 Parameters dictionary can be imported from yaml-file:
 ```yaml
 dims:
@@ -81,8 +86,10 @@ max_mc_rolls: 64 # max steps of MonteCarlo assigment function
 use_correctness_check: true # do or not checking process on start of each iteration
 inner_method: # 'hf' or 'amcl'
 inner_method_params: {} # dict as described below for AMCL or HF
+ignore_v_translate: 0.01 # don't do regular motion update if `v` is smaller
+ignore_w_translate: 0.01 # don't do regular motion update if `w` is smaller
 ```
-#### 1.2.2. ROS-wrapper [ll_sdl2d_ros](src/landmark_localization/ll_sdl2d_ros.py)
+#### 1.2.3. ROS-wrapper [ll_sdl2d_ros](src/landmark_localization/ll_sdl2d_ros.py)
 __Parameters:__
 - __~sdl_params__ (dict, {}) method parameters as described below
 
