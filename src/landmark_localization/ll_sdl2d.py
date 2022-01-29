@@ -114,6 +114,10 @@ class SDL2D(llc.LandmarkLocalization):
             params['max_mc_rolls'] = 64
         if not 'use_correctness_check' in params:
             params['use_correctness_check'] = True
+        if not 'ignore_v_translate' in params:
+            params['ignore_v_translate'] = 0.01
+        if not 'ignore_w_translate' in params:
+            params['ignore_w_translate'] = 0.01
         
         # probabilistic method works in pair with SDL
         if not 'inner_method' in params or not 'inner_method_params' in params:
@@ -158,26 +162,29 @@ class SDL2D(llc.LandmarkLocalization):
         return sd_mi([sd_var(-sigma * mul, sigma * mul)])              
         
     def motion_update(self, motion_params):
-        # TODO super check params                
+        # TODO super check params                        
+        
         self.current_motion_params = copy.deepcopy(motion_params)
         
-        dY = motion_params['dt'] * (motion_params['wY'] + self.sigma_to_sd_mi(motion_params['swY']))
-        dR = motion_params['dt'] * (motion_params['vx'] + self.sigma_to_sd_mi(motion_params['svx']))
-        
-        self.model.variables['Y']['VALUE'] = self.Y_max.assign((self.model.variables['Y']['VALUE'] + dY).norm_angle())
-        
-        def dx(input_vars):
-            return input_vars[0] * u_cos(input_vars[1])
-        
-        def dy(input_vars):
-            return input_vars[0] * u_sin(input_vars[1])
-        
-        self.model.variables['x']['VALUE'] = self.model.variables['x']['VALUE'] + get_rov_monte_carlo_new(dx, [dR, self.model.variables['Y']['VALUE']])
-        self.model.variables['x']['VALUE'] =  self.x_max.assign(self.model.variables['x']['VALUE'])
-        
-        self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
-        self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])                        
-        #self.plot("blue")                                           
+        if self.current_motion_params['vx'] > self.params['ignore_v_translate'] or self.current_motion_params['wY'] > self.params['ignore_w_translate']:
+                    
+            dY = motion_params['dt'] * (motion_params['wY'] + self.sigma_to_sd_mi(motion_params['swY']))
+            dR = motion_params['dt'] * (motion_params['vx'] + self.sigma_to_sd_mi(motion_params['svx']))
+            
+            self.model.variables['Y']['VALUE'] = self.Y_max.assign((self.model.variables['Y']['VALUE'] + dY).norm_angle())
+            
+            def dx(input_vars):
+                return input_vars[0] * u_cos(input_vars[1])
+            
+            def dy(input_vars):
+                return input_vars[0] * u_sin(input_vars[1])
+            
+            self.model.variables['x']['VALUE'] = self.model.variables['x']['VALUE'] + get_rov_monte_carlo_new(dx, [dR, self.model.variables['Y']['VALUE']])
+            self.model.variables['x']['VALUE'] =  self.x_max.assign(self.model.variables['x']['VALUE'])
+            
+            self.model.variables['y']['VALUE'] = self.model.variables['y']['VALUE']+ get_rov_monte_carlo_new(dy, [dR, self.model.variables['Y']['VALUE']])
+            self.model.variables['y']['VALUE'] = self.y_max.assign(self.model.variables['y']['VALUE'])                        
+            #self.plot("blue")                                           
         
         # clear notmain variables
         to_del = []
