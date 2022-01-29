@@ -51,8 +51,8 @@ NP: 100 # base particle number
 NPmax: 100 # maximal number of particles
 calc_type: "ADDITION" # or can be "MULTIPLICATION" - how to deal with probabilities 
 alpha: [1,1,1,1,1,1] # motion parameters
-alpha_slow: 0.0001 # 
-alpha_fast: 0.1 #
+alpha_slow: 0.0001 # amcl recovery param
+alpha_fast: 0.1 # amcl recovery param
 ```
 ##### 1.1.2.2. ROS-wrapper [ll_amcl2d_ros](src/landmark_localization/ll_amcl2d_ros.py)
 __Parameters:__
