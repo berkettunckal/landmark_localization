@@ -5,10 +5,10 @@ do
     for NUM in 1 #2 3 4 5 6 7 8 9 10
     do
         echo "$TEST $NUM running Camera"
-        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_r -can_measure_a --sub_dir camera
+        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_r -can_measure_a --sub_dir Camera
         echo "$TEST $NUM running LBL"
-        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_r --sub_dir lbl
+        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_r --sub_dir LBL
         echo "$TEST $NUM running Bearing"
-        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_a --sub_dir bearing
+        python3 $TEST.py --steps $STEPS -HF -AMCL -SDL_HF -SDL_AMCL -can_measure_a --sub_dir Bearing
     done 
 done
