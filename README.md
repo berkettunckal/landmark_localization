@@ -152,6 +152,25 @@ Also can include `z` and `Y` parameters (used in visualization).
 ## 4. ROS-free tests
 Located in [tests/](tests). This test are ROS-free, however to run them, package must be build. Test are being developed to coverage common localization scenarious in a simple environment. Online accuracy checking comes with them.
 ### 4.1. simple_circle_motion.py
+Main test for methods comparation.
+Params:
+ - -HF - enables histogram filter
+ - -AMCL - enables AMCL
+ - -SDL_HF - enables SDL+HF
+ - -SDL_AMCL - enables SDL+AMCL
+ - -PLOT_FIELD - plots field with robot and landmarks
+ - -PLOT_STUFF - plots all comparation figures
+ - -can_measure_r - robot is able to measure distance to landmark
+ - -cam_measure_a - robot os able to measure angle to landmark
+ - --steps (300) - how much steps of simulation to conduct 
+ - --sub_dir ("") - collected data will be stored in `data/simple_circle_motion/<sub_dir>/m-d-H-M/`
+ - --np_min_amcl (1000) minimal AMCL particles
+ - --np_max_amcl (2000) maximal AMCL particles
+ - --np_min_amcl_sdl (100) minimal AMCL particles when goes with SDL
+ - --np_max_amcl_sdl (200) maximal AMCL particles when goes with SDL
+ - --n_landmarks (10) how much landmarks
+ - --dt (3) step duration in seconds
+
 ### 4.2. zones_of_emptyness_circle_motion.py
 ### 4.3. stational_teleport.py
 
