@@ -1,8 +1,8 @@
 # Landmark Localization
 
-ROS package for robot localization by landmarks.
+ROS package for robot localization by landmarks.  
+Package created for my research in using subdefinite computations in mobile robot localization task.  
 
-## Included methods:
 ### 2D localization: 
  - [x] Basic Histogram filter (HF)
  - [ ] Density Trees Histogram Filter
