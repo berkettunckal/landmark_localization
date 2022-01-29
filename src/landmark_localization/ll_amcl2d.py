@@ -237,6 +237,7 @@ class AMCL2D(llc.LandmarkLocalization):
             return 
         
         self.W /= sumW
+        #print(self.W)
         indexes = np.random.choice(N, size = self.params['NP'], p = self.W)        
         self.P = self.P[indexes,:]
         self.W = self.W[indexes]

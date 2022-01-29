@@ -126,6 +126,7 @@ def get_markers_msg(sdl_method, map_frame, previous_marker_num = 0):
         m.header.stamp = rospy.Time.now()                
         m.id = i
         m.action = Marker.DELETE
+        msg.markers.append(m)
     
     return msg
                 
