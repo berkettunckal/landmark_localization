@@ -161,7 +161,7 @@ Params:
  - -PLOT_FIELD - plots field with robot and landmarks
  - -PLOT_STUFF - plots all comparation figures
  - -can_measure_r - robot is able to measure distance to landmark
- - -cam_measure_a - robot os able to measure angle to landmark
+ - -can_measure_a - robot os able to measure angle to landmark
  - --steps (300) - how much steps of simulation to conduct 
  - --sub_dir ("") - collected data will be stored in `data/simple_circle_motion/<sub_dir>/m-d-H-M/`
  - --np_min_amcl (1000) minimal AMCL particles
