@@ -27,7 +27,7 @@ dims: # filter area
  Y: # same as x and y
 calc_type: 'ADDITION' # or can be 'MULTIPLICATION' - how to deal with probabilities 
 yaw_discount: 1 # for discounting angle influence
-prev_step_weight: 0.5 # how mush previous state is influencing on new one
+prev_step_weight: 0.5 # how much previous state is influencing on new one
 motion_update_type: 'BLUR_SHIFT' # or can be 'PREV_COV' - model of previous pose integration
 pose_calc_type: 'MAX' # or can be 'SUM' - type of calculating final robot pose
 ```
