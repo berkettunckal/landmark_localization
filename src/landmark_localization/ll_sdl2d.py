@@ -123,6 +123,8 @@ class SDL2D(llc.LandmarkLocalization):
         if not 'inner_method' in params or not 'inner_method_params' in params:
             print('SDL error: inner_method or its params are not specified')
             self.ll_method = llc.LandmarkLocalization
+        elif params['inner_method'] == 'none':
+            print('Warn: passing none as inner methond allows find out only some area where robot is')
         elif params['inner_method'] == 'hf':
             #self.ll_method = HF2D(params['inner_method_params'])
             self.inner_hfs = []
@@ -256,7 +258,8 @@ class SDL2D(llc.LandmarkLocalization):
                     print("\nInput variables was reseted!\n")
                     break
         
-        self.model.proc_complex()                
+        self.model.proc_complex()      
+        pose = None
         
         if self.params['inner_method'] == 'hf':
             self.inner_hfs = []

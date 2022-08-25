@@ -145,6 +145,7 @@ class LandmarkLocalizationRos2D(object):
                     landmark_param['sa'] = self.landmark_a_sigma
                     
                     landmarks_params.append(landmark_param)
+        rospy.logwarn(landmarks_params)
         return landmarks_params                
         
     def get_id_list_from_eod_msg(self, msg, id_value):
