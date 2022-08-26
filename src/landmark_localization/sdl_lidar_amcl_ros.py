@@ -28,7 +28,7 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
             self.prev_markers_num = 0
             self.vis_pub = rospy.Publisher("~sd_areas", MarkerArray, queue_size = 1)
             
-        self.relocaliaze_amcl_pub = rospy.Publisher('amcl/initialpose_', PoseWithCovarianceStamped, queue_size = 1)
+        self.relocaliaze_amcl_pub = rospy.Publisher('amcl/initialpose', PoseWithCovarianceStamped, queue_size = 1)
         
     def proc_cb(self, event):
                 
@@ -77,22 +77,26 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
             ## 5.2 pose out - make relocalize pose by this area for AMCL
             rospy.logwarn("Robot outside of SDL zone!")
             
-        # get highest value for each vars
-        max_x = self.ll_method.model.variables['x']['VALUE'].max_module()
-        max_y = self.ll_method.model.variables['y']['VALUE'].max_module()
-        max_Y = self.ll_method.model.variables['Y']['VALUE'].max_module()
-        
-        r_pose = PoseWithCovarianceStamped()
-        r_pose.header.frame_id = self.map_frame
-        r_pose.header.stamp = rospy.Time.now()
-        
-        r_pose.pose.pose.position.x = self.ll_method.model.variables['x']['VALUE'][max_x[1]].center()
-        
-        r_pose.pose.pose.position.y = self.ll_method.model.variables['y']['VALUE'][max_y[1]].center()
-        
-        r_pose.pose.pose.orientation = quaternion_msg_from_yaw(self.ll_method.model.variables['Y']['VALUE'][max_Y[1]].center())
-        
-        self.relocaliaze_amcl_pub.publish(r_pose)
+            # get highest value for each vars
+            max_x = self.ll_method.model.variables['x']['VALUE'].max_module()
+            max_y = self.ll_method.model.variables['y']['VALUE'].max_module()
+            max_Y = self.ll_method.model.variables['Y']['VALUE'].max_module()
+            
+            r_pose = PoseWithCovarianceStamped()
+            r_pose.header.frame_id = self.map_frame
+            r_pose.header.stamp = rospy.Time.now()
+            
+            r_pose.pose.pose.position.x = self.ll_method.model.variables['x']['VALUE'][max_x[1]].center()
+            
+            r_pose.pose.pose.position.y = self.ll_method.model.variables['y']['VALUE'][max_y[1]].center()
+            
+            r_pose.pose.pose.orientation = quaternion_msg_from_yaw(self.ll_method.model.variables['Y']['VALUE'][max_Y[1]].center())
+            
+            r_pose.pose.covariance[0] = max_x[0]/6 # xx
+            r_pose.pose.covariance[7] = max_y[0]/6 # yy
+            r_pose.pose.covariance[35] = max_Y[0]/6 # YY
+                    
+            self.relocaliaze_amcl_pub.publish(r_pose)
         
         if self.visualizate_output:
             self.visualizate()
