@@ -10,6 +10,8 @@ class LandmarkMap(object):
         
     def load(self, path):
         try:
+            self.ids = {}
+            id = 0
             with open(path, 'r') as f:
                 self.map = yaml.load(f, Loader = yaml.FullLoader)
                 
@@ -20,6 +22,9 @@ class LandmarkMap(object):
                             #raise ValueError("MapFormatError: id key must be int or string")
                             print("MapFormatError: id key must be int or string")
                             return False
+                        if not k in self.ids:
+                            self.ids[k] = id
+                            id+=1                            
                         if type(l) is dict:                            
                             if not 'x' in l:
                                 #raise ValueError("MapFormatError: x key not found in landmark data")
@@ -70,7 +75,7 @@ class LandmarkMap(object):
             marker_msg.header.frame_id = frame_id
             marker_msg.header.stamp = stamp
             
-            marker_msg.id = id
+            marker_msg.id = self.ids[id]
             marker_msg.ns = "marker"
             
             marker_msg.type = Marker.CUBE
@@ -106,7 +111,7 @@ class LandmarkMap(object):
             text_msg.header.frame_id = frame_id
             text_msg.header.stamp = stamp
             
-            text_msg.id = id
+            text_msg.id = self.ids[id]
             text_msg.ns = "text"
             
             text_msg.type = Marker.TEXT_VIEW_FACING

@@ -99,6 +99,11 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
             r_pose.pose.covariance[35] = max_Y[0]/6 # YY
                     
             self.relocaliaze_amcl_pub.publish(r_pose)
+            
+        # 6. Check relocalized result?
+        
+        
+        # 7. Analyze cov of pose?
         
         if self.visualizate_output:
             self.visualizate()
