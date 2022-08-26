@@ -321,6 +321,19 @@ class sd_mi(object):
             m += sd_var.module()
         return m
     
+    def max_module(self):
+        ind = 0
+        m = self.sd_vars[0].module()
+        for i, sd_var in enumerate(self.sd_vars):
+            nm = sd_var.module()
+            if m < nm:
+                m = nm
+                ind = i
+        return m, ind
+                
+                
+                
+    
 ##
 # CLASSLESS FUNCTIONS
 ##
