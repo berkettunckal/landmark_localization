@@ -46,6 +46,8 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
         if not self.last_landmark_msg is None:
             if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
                 lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
+                lp.append(self.eod_msg_to_landmarks_params(self.last_complex_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids))
+                #rospy.logwarn(lp)
                 if not lp is None:
                     self.ll_method.landmarks_update(lp)
                     if self.visualizate_map:
