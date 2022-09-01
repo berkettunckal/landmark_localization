@@ -14,15 +14,16 @@ from visualization_msgs.msg import MarkerArray
 import landmark_localization.ll_utils as ll_utils
 
 class LandmarkLocalizationRos2D(object):
-    def __init__(self, ll_method):        
+    def __init__(self, ll_method, ignore_map = False):        
         '''
         MAP
         '''
-        map_path = rospy.get_param('~map_path', None)        
-        self.landmark_map = LandmarkMap()
-        if not self.landmark_map.load(map_path):
-            rospy.logerr("Map {} not found, exit".format(map_path))
-            exit()        
+        if not ignore_map:
+            map_path = rospy.get_param('~map_path', None)        
+            self.landmark_map = LandmarkMap()
+            if not self.landmark_map.load(map_path):
+                rospy.logerr("Map {} not found, exit".format(map_path))
+                exit()        
             
         '''
         localization method, should be one inherited from LandmarkLocalization (landmark_localization_ros_2d.py)
@@ -41,7 +42,8 @@ class LandmarkLocalizationRos2D(object):
         
         self.eod_id_value = rospy.get_param('~eod_id_value')
         self.used_eod_ids = rospy.get_param('~used_eod_ids', [])
-        self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
+        if not ignore_map:
+            self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
         
         self.landmark_transform = None
         self.landmark_target_frame = rospy.get_param('~landmark_target_frame', None) # WHAT IT IS FOR?

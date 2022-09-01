@@ -11,7 +11,11 @@ from landmark_localization.ll_sdl2d_ros import get_markers_msg
 from visualization_msgs.msg import MarkerArray
 from landmark_localization.ll_utils import yaw_from_quaternion_msg, quaternion_msg_from_yaw
 import tf2_ros
+import tf
 from geometry_msgs.msg import PoseWithCovarianceStamped
+from extended_object_detection.msg import SceneArray
+import landmark_localization.ll_utils as ll_utils
+import numpy as np
 
 class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
     
@@ -22,13 +26,60 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
         rospy.logwarn(sdl_params)
         sdl = SDL2D(sdl_params)
         
-        super(SDL_LIDAR_ROS, self).__init__(sdl)
+        super(SDL_LIDAR_ROS, self).__init__(sdl, ignore_map = True)
         
         if self.visualizate_output:
             self.prev_markers_num = 0
             self.vis_pub = rospy.Publisher("~sd_areas", MarkerArray, queue_size = 1)
             
         self.relocaliaze_amcl_pub = rospy.Publisher('amcl/initialpose', PoseWithCovarianceStamped, queue_size = 1)
+        
+        self.last_scene = None
+        rospy.Subscriber('eod_scene', SceneArray, self.eod_scene_cb)
+        
+    def eod_scene_cb(self, msg):
+        self.last_scene = msg
+        
+    def eod_scene_to_landmarks(self, msg):
+        if self.landmark_transform is None:
+            try:    
+                bl_cam_tf = self.tf_buffer.lookup_transform(self.base_frame,
+                                                            msg.header.frame_id, 
+                                                            rospy.Time(0), 
+                                                            rospy.Duration(0.1))
+                
+                self.landmark_transform = tf.transformations.compose_matrix(
+                    translate = [bl_cam_tf.transform.translation.x,
+                                 bl_cam_tf.transform.translation.y,
+                                 bl_cam_tf.transform.translation.z],
+                    angles = ll_utils.euler_from_quaternion_msg(bl_cam_tf.transform.rotation))
+                                
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException,tf2_ros.ExtrapolationException):
+                rospy.logerr('[{}] timed out transform {} to {}, can\'t proceed landmark data'.format(rospy.get_name(), self.base_frame, msg.header.frame_id))
+                return None         
+            
+        landmarks_params = []
+        
+        #for scene in msg.scenes:
+        if len(msg.scenes) == 1:
+            for obj in msg.scenes[0].objects:
+                landmark_param = {}
+                landmark_param['x'] = obj.map_pose.x
+                landmark_param['y'] = obj.map_pose.y
+                
+                vector_src = np.array([[obj.detected_object.transform.translation.x, obj.detected_object.transform.translation.y, obj.detected_object.transform.translation.z, 0]]).T                                        
+                vector_dst = np.dot(self.landmark_transform, vector_src)                    
+                
+                if obj.detected_object.transform.translation.z != 1:# z = 1 means real transform is't known
+                    landmark_param['r'] = float(np.hypot(vector_dst[0], vector_dst[1]))
+                    landmark_param['sr'] = self.landmark_r_sigma
+                landmark_param['a'] = float(np.arctan2(-vector_dst[1], -vector_dst[0])) #NOTE: not sure it is good
+                landmark_param['sa'] = self.landmark_a_sigma
+                
+                landmarks_params.append(landmark_param)
+                
+        return landmarks_params            
+        
         
     def proc_cb(self, event):
                 
@@ -43,16 +94,15 @@ class SDL_LIDAR_ROS(LandmarkLocalizationRos2D):
         
         # 2. landmark update
         id_list = []
-        if not self.last_landmark_msg is None:
-            if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
-                lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
-                lp += self.eod_msg_to_landmarks_params(self.last_complex_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
+        if not self.last_scene is None:
+            if (current_time - self.last_scene.header.stamp).to_sec() <= self.max_time_lag:
+                lp = self.eod_scene_to_landmarks(self.last_scene)
                 rospy.logwarn(lp)
                 if not lp is None:
                     self.ll_method.landmarks_update(lp)
                     if self.visualizate_map:
-                        id_list = self.get_id_list_from_eod_msg(self.last_landmark_msg, self.eod_id_value)
-                        self.last_landmark_msg = None
+                        id_list = []#self.get_id_list_from_eod_msg(self.last_landmark_msg, self.eod_id_value)
+                        self.last_scene = None
             else:
                 rospy.logwarn("[{}] skipped landmark data due to old timestamp.".format(rospy.get_name()))
         
