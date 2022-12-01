@@ -288,6 +288,9 @@ class sd_var(object):
     
     def module(self):
         return self.high - self.low
+    
+    def center(self):
+        return (self.high + self.low)/2
 
 ##
 # CLASSLESS FUNCTIONS

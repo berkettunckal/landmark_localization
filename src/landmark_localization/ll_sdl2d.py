@@ -123,6 +123,8 @@ class SDL2D(llc.LandmarkLocalization):
         if not 'inner_method' in params or not 'inner_method_params' in params:
             print('SDL error: inner_method or its params are not specified')
             self.ll_method = llc.LandmarkLocalization
+        elif params['inner_method'] == 'none':
+            print('Warn: passing none as inner methond allows find out only some area where robot is')
         elif params['inner_method'] == 'hf':
             #self.ll_method = HF2D(params['inner_method_params'])
             self.inner_hfs = []
@@ -243,6 +245,11 @@ class SDL2D(llc.LandmarkLocalization):
                                         partial(landmark_a_constrant_3, xo = landmark_param['x'], 
                                                 yo = landmark_param['y'], a = landmark_param['a'], da = da),
                                         'x', ['y','Y'], 'ROV_MONTE_CARLO') 
+                                        
+    def reset_main_vars(self):
+        self.model.variables['x']['VALUE'] = copy.deepcopy(self.x_max)
+        self.model.variables['y']['VALUE'] = copy.deepcopy(self.y_max)
+        self.model.variables['Y']['VALUE'] = copy.deepcopy(self.Y_max)
     
     def get_pose(self):                       
         # check correctness 
@@ -250,13 +257,12 @@ class SDL2D(llc.LandmarkLocalization):
         if self.params['use_correctness_check']:
             for name_corr_func in self.model.correctnesses.keys():            
                 if not self.model.check_correctness_new(name_corr_func):
-                    self.model.variables['x']['VALUE'] = copy.deepcopy(self.x_max)
-                    self.model.variables['y']['VALUE'] = copy.deepcopy(self.y_max)
-                    self.model.variables['Y']['VALUE'] = copy.deepcopy(self.Y_max)
+                    self.reset_main_vars()
                     print("\nInput variables was reseted!\n")
                     break
         
-        self.model.proc_complex()                
+        self.model.proc_complex()      
+        pose = None
         
         if self.params['inner_method'] == 'hf':
             self.inner_hfs = []

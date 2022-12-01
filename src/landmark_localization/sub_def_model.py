@@ -226,8 +226,8 @@ class SDM(object):
                         #print("Checking {} correctness...".format(n_c))
                         if not self.check_correctness_new(n_c):
                             approved = False
-                            #if self.verbose:
-                            #print("\t[correctness {} FAILED]".format(n_c))
+                            if self.verbose:
+                                print("\t[correctness {} FAILED]".format(n_c))
                             #break
                             return -1
                         #else:

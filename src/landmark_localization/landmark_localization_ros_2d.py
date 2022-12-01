@@ -7,22 +7,23 @@ import tf
 import tf2_ros
 
 from nav_msgs.msg import Odometry
-from extended_object_detection.msg import SimpleObjectArray
+from extended_object_detection.msg import SimpleObjectArray, ComplexObjectArray
 from landmark_localization.landmark_map import LandmarkMap
 from geometry_msgs.msg import Quaternion, Pose, PoseStamped, PoseWithCovariance, PoseWithCovarianceStamped, TransformStamped
 from visualization_msgs.msg import MarkerArray
 import landmark_localization.ll_utils as ll_utils
 
 class LandmarkLocalizationRos2D(object):
-    def __init__(self, ll_method):        
+    def __init__(self, ll_method, ignore_map = False):        
         '''
         MAP
         '''
-        map_path = rospy.get_param('~map_path', None)        
-        self.landmark_map = LandmarkMap()
-        if not self.landmark_map.load(map_path):
-            rospy.logerr("Map {} not found, exit".format(map_path))
-            exit()        
+        if not ignore_map:
+            map_path = rospy.get_param('~map_path', None)        
+            self.landmark_map = LandmarkMap()
+            if not self.landmark_map.load(map_path):
+                rospy.logerr("Map {} not found, exit".format(map_path))
+                exit()        
             
         '''
         localization method, should be one inherited from LandmarkLocalization (landmark_localization_ros_2d.py)
@@ -36,11 +37,13 @@ class LandmarkLocalizationRos2D(object):
         self.landmark_a_sigma = rospy.get_param('~landmark_a_sigma', 0.1)
         
         self.last_landmark_msg = None
+        self.last_complex_landmark_msg = None
         self.last_odom_msg = None
         
         self.eod_id_value = rospy.get_param('~eod_id_value')
         self.used_eod_ids = rospy.get_param('~used_eod_ids', [])
-        self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
+        if not ignore_map:
+            self.used_map_ids = rospy.get_param('~used_map_ids', self.landmark_map.get_ids())
         
         self.landmark_transform = None
         self.landmark_target_frame = rospy.get_param('~landmark_target_frame', None) # WHAT IT IS FOR?
@@ -86,6 +89,7 @@ class LandmarkLocalizationRos2D(object):
                         
         rospy.Subscriber('odom', Odometry, self.odom_cb)
         rospy.Subscriber('eod', SimpleObjectArray, self.eod_cb)
+        rospy.Subscriber('eod_complex', ComplexObjectArray, self.eod_complex_cb)
         rospy.Timer( rospy.Duration(1.0/proc_rate), self.proc_cb)
     
     '''
@@ -127,25 +131,53 @@ class LandmarkLocalizationRos2D(object):
                 return None         
             
         landmarks_params = []
-        for so in msg.objects:
-            if len(ids) == 0 or so.type_id in ids or so.type_names in ids:
-                id_dict = dict(zip(so.extracted_info.keys, so.extracted_info.values))                
-                if id_value in id_dict and int(id_dict[id_value]) in self.landmark_map:
-                    landmark_param = {}
-                    landmark_param['x'] = self.landmark_map[int(id_dict[id_value])]['x']
-                    landmark_param['y'] = self.landmark_map[int(id_dict[id_value])]['y']
-                    
-                    vector_src = np.array([[so.transform.translation.x, so.transform.translation.y, so.transform.translation.z, 0]]).T                                        
-                    vector_dst = np.dot(self.landmark_transform, vector_src)                    
-                    
-                    if so.transform.translation.z != 1:# z = 1 means real transform is't known
-                        landmark_param['r'] = float(np.hypot(vector_dst[0], vector_dst[1]))
-                        landmark_param['sr'] = self.landmark_r_sigma
-                    landmark_param['a'] = float(np.arctan2(-vector_dst[1], -vector_dst[0])) #NOTE: not sure it is good
-                    landmark_param['sa'] = self.landmark_a_sigma
-                    
+        if type(msg) == SimpleObjectArray:
+            for so in msg.objects:
+                landmark_param = self.base_obj_to_landmark_param(so, id_value, ids)
+                if landmark_param is not None:
                     landmarks_params.append(landmark_param)
-        return landmarks_params                
+        elif type(msg) == ComplexObjectArray:
+            for co in msg.objects:
+                landmark_param = self.base_obj_to_landmark_param(co.complex_object, id_value, ids)
+                if landmark_param is not None:
+                    landmarks_params.append(landmark_param)
+                for so in co.simple_objects:
+                    landmark_param = self.base_obj_to_landmark_param(so, id_value, ids)
+                    if landmark_param is not None:
+                        landmarks_params.append(landmark_param)
+                            
+        #rospy.logwarn(landmarks_params)
+        return landmarks_params   
+    
+    def base_obj_to_landmark_param(self, so, id_value, ids):
+        if len(ids) == 0 or so.type_id in ids or so.type_name in ids:
+            id_dict = dict(zip(so.extracted_info.keys, so.extracted_info.values))                
+                
+            id_criteria = id_value in id_dict and int(id_dict[id_value]) in self.landmark_map
+            name_criteria = so.type_name in self.landmark_map
+                
+            if id_criteria or name_criteria:
+                landmark_param = {}
+                
+                if id_criteria:
+                    index = int(id_dict[id_value])
+                if name_criteria:
+                    index = so.type_name
+                    
+                landmark_param['x'] = self.landmark_map[index]['x']
+                landmark_param['y'] = self.landmark_map[index]['y']
+                
+                vector_src = np.array([[so.transform.translation.x, so.transform.translation.y, so.transform.translation.z, 0]]).T                                        
+                vector_dst = np.dot(self.landmark_transform, vector_src)                    
+                
+                if so.transform.translation.z != 1:# z = 1 means real transform is't known
+                    landmark_param['r'] = float(np.hypot(vector_dst[0], vector_dst[1]))
+                    landmark_param['sr'] = self.landmark_r_sigma
+                landmark_param['a'] = float(np.arctan2(-vector_dst[1], -vector_dst[0])) #NOTE: not sure it is good
+                landmark_param['sa'] = self.landmark_a_sigma
+                
+                return landmark_param
+        return None        
         
     def get_id_list_from_eod_msg(self, msg, id_value):
         ids = []
@@ -161,6 +193,9 @@ class LandmarkLocalizationRos2D(object):
     def eod_cb(self, msg):
         self.last_landmark_msg = msg
     
+    def eod_complex_cb(self, msg):
+        self.last_complex_landmark_msg = msg
+    
     def proc_cb(self, event):
         current_time = rospy.Time.now()
         # NOTE check odom time? but if it not passed proove what to do?
@@ -173,6 +208,8 @@ class LandmarkLocalizationRos2D(object):
         if not self.last_landmark_msg is None:
             if (current_time - self.last_landmark_msg.header.stamp).to_sec() <= self.max_time_lag:
                 lp = self.eod_msg_to_landmarks_params(self.last_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
+                lp += self.eod_msg_to_landmarks_params(self.last_complex_landmark_msg, self.eod_id_value, self.used_eod_ids, self.used_map_ids)
+                #rospy.logwarn(lp)
                 if not lp is None:
                     self.ll_method.landmarks_update(lp)
                     if self.visualizate_map:
