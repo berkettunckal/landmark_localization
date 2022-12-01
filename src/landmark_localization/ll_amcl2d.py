@@ -226,7 +226,9 @@ class AMCL2D(llc.LandmarkLocalization):
         dX[:,2] = llc.substract_angles(self.P[:,2], pose[2])        
         return np.dot(dX * np.expand_dims(self.W, axis=1), dX.T)        
 
-    def resampling(self):                                
+    def resampling(self):
+        self.W = np.nan_to_num(self.W) # np.random.choice failing when W contaons NaN
+        
         self.w_avg = np.mean(self.W)
         # get NP particles from previous
         N = self.W.shape[0]
@@ -238,6 +240,7 @@ class AMCL2D(llc.LandmarkLocalization):
         
         self.W /= sumW
         #print(self.W)
+        
         indexes = np.random.choice(N, size = self.params['NP'], p = self.W)        
         self.P = self.P[indexes,:]
         self.W = self.W[indexes]
