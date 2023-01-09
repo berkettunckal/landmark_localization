@@ -168,7 +168,7 @@ class SDL2D(llc.LandmarkLocalization):
         
         self.current_motion_params = copy.deepcopy(motion_params)
         
-        if self.current_motion_params['vx'] > self.params['ignore_v_translate'] or self.current_motion_params['wY'] > self.params['ignore_w_translate']:
+        if abs(self.current_motion_params['vx']) > abs(self.params['ignore_v_translate']) or abs(self.current_motion_params['wY']) > abs(self.params['ignore_w_translate']):
                     
             dY = motion_params['dt'] * (motion_params['wY'] + self.sigma_to_sd_mi(motion_params['swY']))
             dR = motion_params['dt'] * (motion_params['vx'] + self.sigma_to_sd_mi(motion_params['svx']))
